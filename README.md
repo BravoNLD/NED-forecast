@@ -56,6 +56,17 @@ De integratie maakt de volgende sensoren aan:
 
 Elke sensor bevat een `forecast` attribuut met voorspellingen voor de komende 144-168 uur.
 
+## Support
+Heb je een vraag op probleem?
+- Open een issue
+- Bekijk de discussie
+
+##Credis
+Data-bron: NED.nl
+
+##Licentie:
+MIT License - zie LICENSE voor details
+
 ## Gebruik in Lovelace
 
 Voorbeeld ApexCharts configuratie:
@@ -76,15 +87,3 @@ series:
   - entity: sensor.ned_forecast_solar
     name: Zon
     type: area
-
-## Support
-Heb je een vraag op probleem?
-- Open een issue
-- Bekijk de discussie
-
-##Credis
-Data-bron: NED.nl
-
-Licentie:
-MIT License - zie LICENSE voor details
-
