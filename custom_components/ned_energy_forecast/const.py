@@ -63,7 +63,7 @@ SENSOR_TYPES = {
         "unit": "MW",
     },
     "coverage_percentage": {
-        "name": "NED Forecast Renewable Covverage",
+        "name": "NED Forecast Renewable Coverage",
         "icon": "mdi:percent",
         "calculated": True,
         "unit": "%",
