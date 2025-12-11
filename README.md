@@ -171,7 +171,8 @@ series:
         return [new Date(entry.datetime).getTime(), entry.value];
       });
 ```
-## Resultaat: Een gestapelde grafiek met 144 uur forecast, waarbij:
+## Resultaat: 
+Een gestapelde grafiek met 144 uur forecast, waarbij:
 
     🌬️ Wind op land (blauw)
     🌊 Wind op zee (turquoise)
