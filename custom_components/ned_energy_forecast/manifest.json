@@ -1,0 +1,11 @@
+{
+  "domain": "ned_energy_forecast",
+  "name": "NED Energy Forecast",
+  "codeowners": ["@qolor"],
+  "config_flow": true,
+  "documentation": "https://github.com/qolor/ned-energy-forecast",
+  "issue_tracker": "https://github.com/qolor/ned-energy-forecast/issues",
+  "requirements": ["aiohttp>=3.8.0"],
+  "version": "1.2.0",
+  "iot_class": "cloud_polling"
+}
