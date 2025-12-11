@@ -70,23 +70,112 @@ Data-bron: NED.nl
 
 MIT License - zie LICENSE voor details
 
-## Gebruik in Lovelace
+## Voorbeeld Lovelace ApexCharts kaart
 
-Voorbeeld ApexCharts configuratie:
+Met onderstaande Lovelace-config kun je de duurzame energie forecast visualiseren in Home Assistant met de [apexcharts-card](https://github.com/RomRider/apexcharts-card).
+
+**Vereisten:**
+- Installeer de [ApexCharts Card](https://github.com/RomRider/apexcharts-card) via HACS
+
+**Configuratie:**
 
 ```yaml
 type: custom:apexcharts-card
-graph_span: 48h
+graph_span: 144h
+span:
+  start: day
 header:
   show: true
-  title: Nederlandse energie forecast
+  title: Duurzame energie forecast
+  show_states: false
+  colorize_states: true
+now:
+  show: true
+  label: Nu
+  color: "#FF6B6B"
+apex_config:
+  chart:
+    height: 400px
+    stacked: true
+    stackType: normal
+  grid:
+    show: true
+    borderColor: "#e0e0e0"
+    strokeDashArray: 3
+  xaxis:
+    labels:
+      datetimeUTC: false
+      format: dd MMM HH:mm
+  yaxis:
+    labels:
+      formatter: |
+        EVAL:function(value) {
+          return value.toFixed(0) + ' MW';
+        }
+  tooltip:
+    enabled: true
+    shared: true
+    intersect: false
+    x:
+      format: dd MMM yyyy HH:mm
+    y:
+      formatter: |
+        EVAL:function(value) {
+          return value.toFixed(0) + ' MW';
+        }
+  stroke:
+    curve: smooth
+    width: 2
+  fill:
+    type: solid
+    opacity: 0.85
+  legend:
+    show: true
+    position: top
+    horizontalAlign: center
 series:
   - entity: sensor.ned_forecast_wind_onshore
     name: Wind op land
-    type: area
+    type: column
+    color: "#0EA5E9"
+    unit: MW
+    data_generator: |
+      return entity.attributes.forecast.map((entry) => {
+        return [new Date(entry.datetime).getTime(), entry.value];
+      });
   - entity: sensor.ned_forecast_wind_offshore
     name: Wind op zee
-    type: area
+    type: column
+    color: "#14B8A6"
+    unit: MW
+    data_generator: |
+      return entity.attributes.forecast.map((entry) => {
+        return [new Date(entry.datetime).getTime(), entry.value];
+      });
   - entity: sensor.ned_forecast_solar
     name: Zon
-    type: area
+    type: column
+    color: "#FBBF24"
+    unit: MW
+    data_generator: |
+      return entity.attributes.forecast.map((entry) => {
+        return [new Date(entry.datetime).getTime(), entry.value];
+      });
+  - entity: sensor.ned_forecast_consumption
+    name: Verbruik
+    type: line
+    color: red
+    unit: MW
+    data_generator: |
+      return entity.attributes.forecast.map((entry) => {
+        return [new Date(entry.datetime).getTime(), entry.value];
+      });
+```
+## Resultaat: Een gestapelde grafiek met 144 uur forecast, waarbij:
+
+    🌬️ Wind op land (blauw)
+    🌊 Wind op zee (turquoise)
+    ☀️ Zon (geel)
+    ⚡ Verbruik (rode lijn)
+
+worden getoond met een "Nu" indicator op het huidige moment.
