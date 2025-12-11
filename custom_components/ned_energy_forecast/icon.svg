@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- Donkerblauwe achtergrond -->
+  <rect width="256" height="256" rx="32" fill="#1e3a8a"/>
+  
+  <!-- Witte grafieklijn (stijgende curve) -->
+  <path d="M 40 180 Q 80 160, 100 140 T 160 100 T 216 60" 
+        stroke="white" 
+        stroke-width="8" 
+        fill="none" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+  
+  <!-- Oranje datapunten (NL-knipoog) -->
+  <circle cx="100" cy="140" r="6" fill="#f97316"/>
+  <circle cx="160" cy="100" r="6" fill="#f97316"/>
+  <circle cx="216" cy="60" r="6" fill="#f97316"/>
+  
+  <!-- Geel bliksemsymbool -->
+  <path d="M 128 80 L 110 130 L 130 130 L 115 180 L 150 120 L 130 120 L 145 80 Z" 
+        fill="#fbbf24" 
+        stroke="#f59e0b" 
+        stroke-width="2"/>
+</svg>
