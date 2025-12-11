@@ -1,7 +1,6 @@
 {
   "domain": "ned_energy_forecast",
   "name": "NED Energy Forecast",
-  "codeowners": ["@qolor"],
   "config_flow": true,
   "documentation": "https://github.com/BravoNLD/NED-forecast",
   "issue_tracker": "https://github.com/BravoNLD/NED-forecast/issues",
