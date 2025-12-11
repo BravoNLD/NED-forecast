@@ -33,7 +33,7 @@ Een Home Assistant integratie voor het ophalen van Nederlandse energie forecast 
 ### Handmatige installatie
 
 1. Download de laatste release
-2. Kopieer de map `custom_components/ned_forecast` naar je `config/custom_components/` map
+2. Kopieer de map `custom_components/ned_energy_forecast` naar je `config/custom_components/` map
 3. Herstart Home Assistant
 
 ## Configuratie
