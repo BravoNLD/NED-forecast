@@ -68,4 +68,12 @@ SENSOR_TYPES = {
         "calculated": True,
         "unit": "%",
     },
+        "co2_intensity": {
+        "name": "NED Forecast CO2 Intensity",
+        "icon": "mdi:molecule-co2",
+        "type_id": DATA_TYPE_ELECTRICITY_MIX,
+        "activity": ACTIVITY_PRODUCTION,
+        "unit": "gCO2eq/kWh",
+        "is_co2": True, # Flag om te herkennen dat dit CO2 data is
+    },
 }
