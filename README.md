@@ -54,7 +54,7 @@ De integratie maakt de volgende sensoren aan:
 - `sensor.ned_forecast_total_renewable` - Totaal duurzaam (MW)
 - `sensor.ned_forecast_coverage_percentage` - Dekkingspercentage (%)
 
-Elke sensor bevat een `forecast` attribuut met voorspellingen voor de komende 48 uur.
+Elke sensor bevat een `forecast` attribuut met voorspellingen voor de komende 144-168 uur.
 
 ## Gebruik in Lovelace
 
@@ -76,3 +76,15 @@ series:
   - entity: sensor.ned_forecast_solar
     name: Zon
     type: area
+
+## Support
+Heb je een vraag op probleem?
+- Open een issue
+- Bekijk de discussie
+
+##Credis
+Data-bron: NED.nl
+
+Licentie:
+MIT License - zie LICENSE voor details
+
