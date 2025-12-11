@@ -29,41 +29,41 @@ GRANULARITY_TIMEZONE_CET = 1
 # Sensor definitions
 SENSOR_TYPES = {
     "wind_onshore": {
-        "name": "Wind op land",
+        "name": "NED Forecast Wind Onshore",
         "icon": "mdi:wind-turbine",
         "type_id": DATA_TYPE_WIND_ONSHORE,
         "activity": ACTIVITY_PRODUCTION,
         "unit": "MW",
     },
     "wind_offshore": {
-        "name": "Wind op zee",
+        "name": "NED Forecast Wind Offshore",
         "icon": "mdi:wind-turbine",
         "type_id": DATA_TYPE_WIND_OFFSHORE,
         "activity": ACTIVITY_PRODUCTION,
         "unit": "MW",
     },
     "solar": {
-        "name": "Zonne-energie",
+        "name": "NED Forecast Solar",
         "icon": "mdi:solar-power",
         "type_id": DATA_TYPE_SOLAR,
         "activity": ACTIVITY_PRODUCTION,
         "unit": "MW",
     },
     "consumption": {
-        "name": "Elektriciteitsverbruik",
+        "name": "NED Forecast Consumption",
         "icon": "mdi:transmission-tower",
         "type_id": DATA_TYPE_CONSUMPTION,
         "activity": ACTIVITY_CONSUMPTION,
         "unit": "MW",
     },
     "total_renewable": {
-        "name": "Totaal duurzaam",
+        "name": "NED Forecast Total Renewable",
         "icon": "mdi:leaf",
         "calculated": True,
         "unit": "MW",
     },
     "coverage_percentage": {
-        "name": "Dekkingspercentage",
+        "name": "NED Forecast Renewable Covverage",
         "icon": "mdi:percent",
         "calculated": True,
         "unit": "%",
