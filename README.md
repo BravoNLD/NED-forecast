@@ -38,10 +38,15 @@ Een Home Assistant integratie voor het ophalen van Nederlandse energie forecast 
 
 ## Configuratie
 
-1. Ga naar Settings → Devices & Services
-2. Klik op "+ Add Integration"
-3. Zoek naar "NED Energy Forecast"
-4. Volg de configuratie stappen
+1. Registreer je op ned.nl
+2. Maak een API key aan om toegang tot de data te krijgen
+3. Sla de API key op (eenmalig zichtbaar!)
+4. Ga naar Settings → Devices & Services
+5. Klik op "+ Add Integration"
+6. Zoek naar "NED Energy Forecast"
+7. Volg de configuratie stappen
+8. Vul API key in
+9. Vul gewenste forecast periode in (max 144 uur vooruit)
 
 ## Sensoren
 
