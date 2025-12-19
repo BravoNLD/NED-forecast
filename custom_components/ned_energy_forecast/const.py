@@ -68,10 +68,10 @@ SENSOR_TYPES = {
         "calculated": True,
         "unit": "%",
     },
-    "forecast_feed_in_tariff": {
-        "name": "Forecast Feed-in Tariff",
+    "forecast_epex_price": {
+        "name": "Forecast Epex Price",
         "icon": "mdi:cash-multiple",
-        "unit": "ratio",  # of "" als je geen eenheid wilt
+        "unit": "ct/kWh",  # of "" als je geen eenheid wilt
         "calculated": True,
-    },
+    }
 }
