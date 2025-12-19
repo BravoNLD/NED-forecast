@@ -3,7 +3,6 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/release/BravoNLD/NED-forecast.svg)](https://github.com/BravoNLD/NED-forecast/releases)
 [![GitHub Issues](https://img.shields.io/github/issues/BravoNLD/NED-forecast)](https://github.com/BravoNLD/NED-forecast/issues)
-[![Maintained](https://img.shields.io/maintenance/yes/2025)](https://github.com/BravoNLD/NED-forecast)
 
 Home Assistant integratie voor real-time duurzame energievoorspellingen in Nederland. Haal wind-, zon-, en verbruiksdata op tot 144 uur vooruit, en voorspel daarmee EPEX spotprijzen.
 
