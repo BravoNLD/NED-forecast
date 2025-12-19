@@ -87,11 +87,11 @@ De sensoren worden nu automatisch aangemaakt en elk uur geüpdatet.
 
 | Sensor | Entity ID | Eenheid | Beschrijving |
 |--------|-----------|---------|--------------|
-| Wind (land) | `sensor.ned_forecast_wind_onshore` | MW | Windproductie op land |
-| Wind (zee) | `sensor.ned_forecast_wind_offshore` | MW | Offshore windparken |
-| Zonne-energie | `sensor.ned_forecast_solar` | MW | Totale zonneproductie |
-| Totaal duurzaam | `sensor.ned_forecast_total_renewable` | MW | Som wind + zon |
-| Verbruik | `sensor.ned_forecast_consumption` | MW | Landelijk verbruik |
+| Wind (land) | `sensor.ned_forecast_wind_onshore` | GW | Windproductie op land |
+| Wind (zee) | `sensor.ned_forecast_wind_offshore` | GW | Offshore windparken |
+| Zonne-energie | `sensor.ned_forecast_solar` | GW | Totale zonneproductie |
+| Totaal duurzaam | `sensor.ned_forecast_total_renewable` | GW | Som wind + zon |
+| Verbruik | `sensor.ned_forecast_consumption` | GW | Landelijk verbruik |
 | Dekkingspercentage | `sensor.ned_forecast_coverage` | % | Duurzame dekking |
 | EPEX prijs (ct/kWh) | `sensor.ned_epex_price_kwh` | ct/kWh | Omgerekend naar kWh |
 
@@ -127,7 +127,7 @@ yaxis:
       labels:
         formatter: |
           EVAL:function(value) {
-            return value.toFixed(0) + ' MW';
+            return value.toFixed(0) + ' GW';
           }
   - id: Price
     opposite: true
@@ -163,7 +163,7 @@ apex_config:
     "y":
       formatter: |
         EVAL:function(value) {
-          return value.toFixed(0) + ' MW';
+          return value.toFixed(0) + ' GW';
         }
   stroke:
     curve: smooth
@@ -181,7 +181,7 @@ series:
     type: column
     yaxis_id: Volume
     color: "#0EA5E9"
-    unit: MW
+    unit: GW
     stack_group: renewable
     show:
       legend_value: false
@@ -194,7 +194,7 @@ series:
     type: column
     color: "#14B8A6"
     yaxis_id: Volume
-    unit: MW
+    unit: GW
     stack_group: renewable
     show:
       legend_value: false
@@ -207,7 +207,7 @@ series:
     type: column
     color: "#FBBF24"
     yaxis_id: Volume
-    unit: MW
+    unit: GW
     stack_group: renewable
     show:
       legend_value: false
@@ -220,7 +220,7 @@ series:
     type: line
     color: red
     yaxis_id: Volume
-    unit: MW
+    unit: GW
     show:
       legend_value: false
     data_generator: |
