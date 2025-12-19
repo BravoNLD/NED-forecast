@@ -180,7 +180,7 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                     restlast_mw = values["consumption"] - total_renewable
                     consumptie_mw = values["consumption"]
                     
-                    # Nieuwe formule: prijs = 0.000462 × restlast_MW + 0.000647 × consumptie_MW - 4.4074
+                    # Nieuwe formule: prijs = 0.00127 × restlast_MW + 1.5
                     epex_price = (0.00127 * restlast_mw) + 1.5
 
                     epex_forecast.append({
