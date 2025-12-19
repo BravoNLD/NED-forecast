@@ -2,7 +2,7 @@
   "domain": "ned_energy_forecast",
   "name": "NED Energy Forecast",
   "config_flow": true,
-  "documentation": "https://github.com/BravoNLD/NED-forecast",
+  "documentation": "https://github.com/BravoNLD/NED-forecast#readme",
   "issue_tracker": "https://github.com/BravoNLD/NED-forecast/issues",
   "version": "1.1.2",
   "codeowners": ["@BravoNLD"],
