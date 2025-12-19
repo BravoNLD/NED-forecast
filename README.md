@@ -83,7 +83,7 @@ Met onderstaande Lovelace-config kun je de duurzame energie forecast visualisere
 **Vereisten:**
 - Installeer de [ApexCharts Card](https://github.com/RomRider/apexcharts-card) via HACS
 
-![Voorbeeld duurzame energie forecast](https://github.com/BravoNLD/NED-forecast/blob/main/NED%20forecast.png)
+<img width="924" height="408" alt="Screenshot_apexchart_graph_including_price_forecast" src="https://github.com/user-attachments/assets/4f5f0550-2da0-40ed-ad9b-f385b36203f6" />
 
 **Configuratie:**
 
