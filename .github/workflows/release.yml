@@ -8,11 +8,16 @@ on:
       - 'custom_components/ned_energy_forecast/manifest.json'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Nodig voor tags
       
       - name: Get version from manifest
         id: version
@@ -24,23 +29,26 @@ jobs:
       - name: Check if tag exists
         id: tag_check
         run: |
+          git fetch --tags
           if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Tag v${{ steps.version.outputs.version }} already exists"
           else
             echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Tag v${{ steps.version.outputs.version }} does not exist yet"
           fi
       
       - name: Create Release
         if: steps.tag_check.outputs.exists == 'false'
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          release_name: v${{ steps.version.outputs.version }}
+          tag: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
           draft: false
           prerelease: false
+          generateReleaseNotes: true
           body: |
             Release ${{ steps.version.outputs.version }}
             
             See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          token: ${{ secrets.GITHUB_TOKEN }}
