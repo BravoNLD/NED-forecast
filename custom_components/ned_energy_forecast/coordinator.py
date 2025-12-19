@@ -60,7 +60,7 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
 
                 if sensor_data:
                     _LOGGER.debug(
-                        "Fetched %d records for %s (current: %.1f MW)",
+                        "Fetched %d records for %s (current: %.1f GW)",
                         len(sensor_data),
                         key,
                         sensor_data[0]["capacity"]
@@ -100,14 +100,14 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                     ]
 
                     _LOGGER.info(
-                        "Energy summary: Renewable %.1f MW / Consumption %.1f MW = %.1f%% coverage",
+                        "Energy summary: Renewable %.1f GW / Consumption %.1f GW = %.1f%% coverage",
                         total_renewable,
                         consumption,
                         coverage_pct,
                     )
 
                     # ========== EPEX SPOTPRIJS BEREKENING ==========
-                    # Bereken: prijs = 0.000462 × restlast_MW + 0.000647 × consumptie_MW - 4.4074
+                    # Bereken: prijs = (1.27 * restlast_gw) + 1.5
                     self._calculate_epex_forecast(data)
 
                 except (KeyError, ValueError, IndexError, TypeError) as err:
@@ -122,11 +122,11 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
     def _calculate_epex_forecast(self, data: dict[str, Any]) -> None:
         """
         Bereken EPEX spotprijs forecast op basis van formule:
-        prijs (ct/kWh) = 0.000462 × restlast_MW + 0.000647 × consumptie_MW - 4.4074
+        prijs (ct/kWh) = (1.27 * restlast_gw) + 1.5
         
         Waarbij:
-        - restlast_MW = consumptie - (wind_onshore + wind_offshore + solar)
-        - consumptie_MW = consumption
+        - restlast_GW = consumptie - (wind_onshore + wind_offshore + solar)
+        - consumptie_GW = consumption
         """
         try:
             # Haal alle timeseries op
@@ -177,11 +177,11 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                     total_renewable = values["wind_onshore"] + values["wind_offshore"] + values["solar"]
                     
                     # Bereken restlast (consumptie - hernieuwbare opwek)
-                    restlast_mw = values["consumption"] - total_renewable
-                    consumptie_mw = values["consumption"]
+                    restlast_gw = values["consumption"] - total_renewable
+                    consumptie_gw = values["consumption"]
                     
-                    # Nieuwe formule: prijs = 0.00127 × restlast_MW + 1.5
-                    epex_price = (0.00127 * restlast_mw) + 1.5
+                    # Nieuwe formule: prijs = 1.27 × restlast_GW + 1.5
+                    epex_price = (1.27 * restlast_gw) + 1.5
 
                     epex_forecast.append({
                         "capacity": round(epex_price, 3),  # EPEX prijs in ct/kWh, 3 decimalen
@@ -193,7 +193,7 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
             if epex_forecast:
                 data["epex_price_forecast"] = epex_forecast
                 _LOGGER.info(
-                    "EPEX forecast berekend: %d datapunten, huidige prijs: %.3f ct/kWh (restlast: %.1f MW)",
+                    "EPEX forecast berekend: %d datapunten, huidige prijs: %.3f ct/kWh (restlast: %.1f GW)",
                     len(epex_forecast),
                     epex_forecast[0]["capacity"],
                     values["consumption"] - (values["wind_onshore"] + values["wind_offshore"] + values["solar"])
@@ -258,13 +258,13 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
 
                     parsed: list[dict] = []
                     for record in records:
-                        # ⚡ API geeft capacity in Watt, we willen MW
+                        # ⚡ API geeft capacity in Watt, we willen GW
                         capacity_watt = float(record.get("capacity", 0))
-                        capacity_mw = capacity_watt / 1000.0
+                        capacity_gw = capacity_watt / 1000000.0
 
                         parsed.append(
                             {
-                                "capacity": capacity_mw,  # Converted to MW
+                                "capacity": capacity_gw,  # Converted to GW
                                 "timestamp": record.get("validfrom"),
                                 "percentage": record.get("percentage"),
                                 "last_update": record.get("lastupdate"),
