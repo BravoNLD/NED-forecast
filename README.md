@@ -94,13 +94,37 @@ span:
   start: day
 header:
   show: true
-  title: Duurzame energie forecast
+  title: Epex prijs en duurzame energie forecast
   show_states: false
   colorize_states: true
 now:
   show: true
   label: Nu
   color: "#FF6B6B"
+stacked: true
+yaxis:
+  - id: Volume
+    decimals: 0
+    align_to: 1000
+    apex_config:
+      tickAmount: 6
+      labels:
+        formatter: |
+          EVAL:function(value) {
+            return value.toFixed(0) + ' MW';
+          }
+  - id: Price
+    opposite: true
+    decimals: 0
+    min: ~0
+    max: ~25
+    apex_config:
+      tickAmount: 6
+      labels:
+        formatter: |
+          EVAL:function(value) {
+            return value.toFixed(0) + ' ct/kWh';
+          }
 apex_config:
   chart:
     height: 400px
@@ -113,20 +137,14 @@ apex_config:
   xaxis:
     labels:
       datetimeUTC: false
-      format: dd MMM HH:mm
-  yaxis:
-    labels:
-      formatter: |
-        EVAL:function(value) {
-          return value.toFixed(0) + ' MW';
-        }
+      format: dd MMM
   tooltip:
     enabled: true
     shared: true
     intersect: false
     x:
       format: dd MMM yyyy HH:mm
-    y:
+    "y":
       formatter: |
         EVAL:function(value) {
           return value.toFixed(0) + ' MW';
@@ -139,45 +157,75 @@ apex_config:
     opacity: 0.85
   legend:
     show: true
-    position: top
+    position: bottom
     horizontalAlign: center
 series:
-  - entity: sensor.ned_forecast_wind_onshore
+  - entity: sensor.wind_op_land
     name: Wind op land
     type: column
+    yaxis_id: Volume
     color: "#0EA5E9"
     unit: MW
+    stack_group: renewable
+    show:
+      legend_value: false
     data_generator: |
       return entity.attributes.forecast.map((entry) => {
         return [new Date(entry.datetime).getTime(), entry.value];
       });
-  - entity: sensor.ned_forecast_wind_offshore
+  - entity: sensor.wind_op_zee
     name: Wind op zee
     type: column
     color: "#14B8A6"
+    yaxis_id: Volume
     unit: MW
+    stack_group: renewable
+    show:
+      legend_value: false
     data_generator: |
       return entity.attributes.forecast.map((entry) => {
         return [new Date(entry.datetime).getTime(), entry.value];
       });
-  - entity: sensor.ned_forecast_solar
+  - entity: sensor.zonne_energie
     name: Zon
     type: column
     color: "#FBBF24"
+    yaxis_id: Volume
     unit: MW
+    stack_group: renewable
+    show:
+      legend_value: false
     data_generator: |
       return entity.attributes.forecast.map((entry) => {
         return [new Date(entry.datetime).getTime(), entry.value];
       });
-  - entity: sensor.ned_forecast_consumption
+  - entity: sensor.elektriciteitsverbruik
     name: Verbruik
     type: line
     color: red
+    yaxis_id: Volume
     unit: MW
+    show:
+      legend_value: false
     data_generator: |
       return entity.attributes.forecast.map((entry) => {
         return [new Date(entry.datetime).getTime(), entry.value];
       });
+  - entity: sensor.ned_forecast_epex_price
+    name: EPEX Prijs
+    type: line
+    color: white
+    yaxis_id: Price
+    unit: ct/kWh
+    stroke_width: 3
+    opacity: 1
+    show:
+      legend_value: false
+    data_generator: |
+      return entity.attributes.forecast.map((entry) => {
+        return [new Date(entry.datetime).getTime(), entry.value];
+      });
+
 ```
 ## Resultaat: 
 Een gestapelde grafiek met 144 uur forecast, waarbij:
@@ -186,5 +234,18 @@ Een gestapelde grafiek met 144 uur forecast, waarbij:
     🌊 Wind op zee (turquoise)
     ☀️ Zon (geel)
     ⚡ Verbruik (rode lijn)
+       EPEX prijs verwachting (witte lijn)
 
 worden getoond met een "Nu" indicator op het huidige moment.
+
+PS voor een brede weergave moet je de card in de grid card configuration opnemen met 1 kolom
+```yaml
+square: true
+type: grid
+cards:
+- apexchart # <-- voeg hier de apex chart in
+columns: 1
+grid_options:
+  columns: 24
+  rows: auto
+```
