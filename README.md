@@ -1,91 +1,108 @@
-# NED Energy Forecast
+# ⚡ NED Energy Forecast voor Home Assistant
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/release/BravoNLD/NED-forecast.svg)](https://github.com/BravoNLD/NED-forecast/releases)
-[![License](https://img.shields.io/github/license/BravoNLD/NED-forecast.svg)](LICENSE)
+[![GitHub Issues](https://img.shields.io/github/issues/BravoNLD/NED-forecast)](https://github.com/BravoNLD/NED-forecast/issues)
+[![Maintained](https://img.shields.io/maintenance/yes/2025)](https://github.com/BravoNLD/NED-forecast)
 
-Een Home Assistant integratie voor het ophalen van Nederlandse energie forecast data van ned.nl.
+Home Assistant integratie voor real-time duurzame energievoorspellingen in Nederland. Haal wind-, zon-, en verbruiksdata op tot 144 uur vooruit, en voorspel daarmee EPEX spotprijzen.
 
-## Functies
+---
 
-- 📊 Real-time forecast data voor Nederlandse energie productie
-- 🌬️ Wind op land en zee productie
-- ☀️ Zonne-energie productie
-- ⚡ Totaal elektriciteitsverbruik
-- 🌱 Totaal duurzame energie productie
-- 📈 Dekkingspercentage duurzame energie
+## 📸 Voorbeeld
 
-## Installatie
+![NED Energy Forecast Dashboard](https://github.com/user-attachments/assets/4f5f0550-2da0-40ed-ad9b-f385b36203f6)
+*Real-time duurzame energie forecast met EPEX prijzen verwachting*
+
+---
+
+## ✨ Functies
+
+| Feature | Beschrijving |
+|---------|--------------|
+| 🌬️ **Wind (land + zee)** | Productievoorspelling windenergie |
+| ☀️ **Zonne-energie** | Productievoorspelling zonenergie |
+| ⚡ **Totaalverbruik** | Nederlandse elektriciteitsverbruik per uur |
+| 🌱 **Duurzaam aandeel** | Dekkingspercentage hernieuwbare energie (%) |
+| 💰 **EPEX prijzen verwachting** | Day-ahead spotprijzen verwachting (ct/kWh) |
+| 📈 **144u forecast** | Tot 6 dagen vooruit kijken |
+| 🔄 **Auto-refresh** | Data wordt elk uur automatisch geüpdatet |
+
+---
+
+## ⚡ Quick Start
+
+1. **Installeer via HACS** → Voeg custom repository toe
+2. **API Key ophalen** bij [NED.nl](https://ned.nl/nl/user/register)
+3. **Configureer integratie** via Settings → Integrations
+4. **Kopieer ApexCharts config** (zie hieronder)
+5. **Klaar!** 🎉
+
+---
+
+## 📦 Installatie
 
 ### Via HACS (aanbevolen)
 
-1. Open HACS in Home Assistant
-2. Ga naar "Integrations"
-3. Klik op de drie puntjes rechtsboven
-4. Selecteer "Custom repositories"
-5. Voeg deze URL toe: `https://github.com/BravoNLD/NED-forecast`
-6. Selecteer categorie: "Integration"
-7. Klik op "Add"
-8. Zoek naar "NED Energy Forecast"
-9. Klik op "Download"
-10. Herstart Home Assistant
+1. Open **HACS** in Home Assistant
+2. Klik op de **3 stippen** rechts bovenin → **Custom repositories**
+3. Voeg toe:
+   - **Repository**: `https://github.com/BravoNLD/NED-forecast`
+   - **Categorie**: `Integration`
+4. Klik op **Add**
+5. Zoek naar **"NED Energy Forecast"** in HACS
+6. Klik op **Download**
+7. **Herstart Home Assistant**
 
 ### Handmatige installatie
 
-1. Download de laatste release
-2. Kopieer de map `custom_components/ned_energy_forecast` naar je `config/custom_components/` map
+1. Download de [nieuwste release](https://github.com/BravoNLD/NED-forecast/releases)
+2. Pak het uit in `custom_components/ned_energy_forecast/`
 3. Herstart Home Assistant
 
-## Configuratie
+---
 
-1. Registreer je op ned.nl
-2. Maak een API key aan om toegang tot de data te krijgen
-3. Sla de API key op (eenmalig zichtbaar!)
-4. Ga naar Settings → Devices & Services
-5. Klik op "+ Add Integration"
-6. Zoek naar "NED Energy Forecast"
-7. Volg de configuratie stappen
-8. Vul API key in
-9. Vul gewenste forecast periode in (max 144 uur vooruit)
+## ⚙️ Configuratie
 
-## Sensoren
+### Stap 1: Verkrijg een API key
 
-De integratie maakt de volgende sensoren aan:
+1. Ga naar **[NED.nl API Registratie](https://ned.nl/nl/user/register)**
+2. Maak een account aan (gratis voor non-commercieel gebruik)
+3. Log in en navigeer naar je profiel → **API Keys**
+4. Genereer een nieuwe API key
+5. **Kopieer en bewaar deze veilig** – je ziet hem maar één keer!
 
-- `sensor.ned_forecast_wind_onshore` - Wind op land (MW)
-- `sensor.ned_forecast_wind_offshore` - Wind op zee (MW)
-- `sensor.ned_forecast_solar` - Zonne-energie (MW)
-- `sensor.ned_forecast_consumption` - Elektriciteitsverbruik (MW)
-- `sensor.ned_forecast_total_renewable` - Totaal duurzaam (MW)
-- `sensor.ned_forecast_coverage_percentage` - Dekkingspercentage (%)
+### Stap 2: Integratie toevoegen
 
-Elke sensor bevat een `forecast` attribuut met voorspellingen voor de komende 144-168 uur.
+1. Ga naar **Settings** → **Devices & Services**
+2. Klik op **+ Add Integration**
+3. Zoek naar **"NED Energy Forecast"**
+4. Plak je API key
+5. Klik op **Submit**
 
-## Support
+De sensoren worden nu automatisch aangemaakt en elk uur geüpdatet.
 
-Heb je een vraag op probleem?
-- Open een issue
-- Bekijk de discussie
+---
 
-## Credits
+## 📊 Beschikbare sensoren
 
-Data-bron: NED.nl 
-[![Datasource](https://ned.nl/themes/custom/nedt/logo.svg)](https://ned.nl/nl)
+| Sensor | Entity ID | Eenheid | Beschrijving |
+|--------|-----------|---------|--------------|
+| Wind (land) | `sensor.ned_forecast_wind_onshore` | MW | Windproductie op land |
+| Wind (zee) | `sensor.ned_forecast_wind_offshore` | MW | Offshore windparken |
+| Zonne-energie | `sensor.ned_forecast_solar` | MW | Totale zonneproductie |
+| Totaal duurzaam | `sensor.ned_forecast_total_renewable` | MW | Som wind + zon |
+| Verbruik | `sensor.ned_forecast_consumption` | MW | Landelijk verbruik |
+| Dekkingspercentage | `sensor.ned_forecast_coverage` | % | Duurzame dekking |
+| EPEX prijs (ct/kWh) | `sensor.ned_epex_price_kwh` | ct/kWh | Omgerekend naar kWh |
 
-## Licentie:
+Alle sensoren bevatten **forecast attributes** met data tot 144 uur vooruit.
 
-MIT License - zie LICENSE voor details
+---
 
-## Voorbeeld Lovelace ApexCharts kaart
+## 📈 ApexCharts voorbeeld
 
-Met onderstaande Lovelace-config kun je de duurzame energie forecast visualiseren in Home Assistant met de [apexcharts-card](https://github.com/RomRider/apexcharts-card).
-
-**Vereisten:**
-- Installeer de [ApexCharts Card](https://github.com/RomRider/apexcharts-card) via HACS
-
-<img width="924" height="408" alt="Screenshot_apexchart_graph_including_price_forecast" src="https://github.com/user-attachments/assets/4f5f0550-2da0-40ed-ad9b-f385b36203f6" />
-
-**Configuratie:**
+Kopieer deze configuratie voor een mooie gestapelde grafiek met prijzen:
 
 ```yaml
 type: custom:apexcharts-card
@@ -225,27 +242,48 @@ series:
       return entity.attributes.forecast.map((entry) => {
         return [new Date(entry.datetime).getTime(), entry.value];
       });
-
 ```
-## Resultaat: 
-Een gestapelde grafiek met 144 uur forecast, waarbij:
+## 💡 Tip: Full-width weergave
 
-    🌬️ Wind op land (blauw)
-    🌊 Wind op zee (turquoise)
-    ☀️ Zon (geel)
-    ⚡ Verbruik (rode lijn)
-       EPEX prijs verwachting (witte lijn)
-
-worden getoond met een "Nu" indicator op het huidige moment.
-
-PS voor een brede weergave moet je de card in de grid card configuration opnemen met 1 kolom
+Wrap de card in een grid voor maximale breedte:
 ```yaml
-square: true
 type: grid
-cards:
-- apexchart # <-- voeg hier de apex chart in
 columns: 1
-grid_options:
-  columns: 24
-  rows: auto
+cards:
+  - type: custom:apexcharts-card
+    # ... jouw config hierboven
 ```
+## ❓ Veelgestelde vragen
+
+**Q: Sensoren tonen "Unavailable"**  
+A: Check of je API key geldig is. Kijk in de logs (`Settings → System → Logs`) voor foutmeldingen.
+
+**Q: Forecast data is verouderd**  
+A: De data wordt elk uur ververst. Force een update via Developer Tools → Services → `homeassistant.update_entity`.
+
+**Q: ApexCharts grafiek is leeg**
+A:  Controleer of custom:apexcharts-card is geïnstalleerd via HACS
+    Wacht ~1 uur tot forecast data is opgehaald
+    Check of entity ID's kloppen met jouw installatie
+
+## 🚀 Roadmap
+
+- [ ] Notificaties bij lage/hoge dekkingspercentages  
+- [x] EPEX prijsvoorspelling *(sinds v1.1.0)*
+
+Suggesties? Open een [issue](https://github.com/BravoNLD/NED-forecast/issues)!
+
+## 📜 Credits
+
+    Data-bron: NED.nl 
+[![Datasource](https://ned.nl/themes/custom/nedt/logo.svg)](https://ned.nl/nl)
+    
+    Ontwikkeld door: @BravoNLD
+
+Dank aan de Tweakers.net community voor feedback en testing!
+
+## Licentie
+
+Dit project is gelicenseerd onder de MIT License – zie het LICENSE bestand voor details.
+
+Gemaakt met ⚡ voor de Nederlandse energietransitie 
