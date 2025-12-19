@@ -137,7 +137,7 @@ apex_config:
   xaxis:
     labels:
       datetimeUTC: false
-      format: dd MMM
+      format: ddd dd MMM
   tooltip:
     enabled: true
     shared: true
@@ -160,7 +160,7 @@ apex_config:
     position: bottom
     horizontalAlign: center
 series:
-  - entity: sensor.wind_op_land
+  - entity: sensor.ned_forecast_wind_onshore
     name: Wind op land
     type: column
     yaxis_id: Volume
@@ -173,7 +173,7 @@ series:
       return entity.attributes.forecast.map((entry) => {
         return [new Date(entry.datetime).getTime(), entry.value];
       });
-  - entity: sensor.wind_op_zee
+  - entity: sensor.ned_forecast_wind_offshore
     name: Wind op zee
     type: column
     color: "#14B8A6"
@@ -186,7 +186,7 @@ series:
       return entity.attributes.forecast.map((entry) => {
         return [new Date(entry.datetime).getTime(), entry.value];
       });
-  - entity: sensor.zonne_energie
+  - entity: sensor.ned_forecast_solar
     name: Zon
     type: column
     color: "#FBBF24"
@@ -199,7 +199,7 @@ series:
       return entity.attributes.forecast.map((entry) => {
         return [new Date(entry.datetime).getTime(), entry.value];
       });
-  - entity: sensor.elektriciteitsverbruik
+  - entity: sensor.ned_forecast_consumption
     name: Verbruik
     type: line
     color: red
