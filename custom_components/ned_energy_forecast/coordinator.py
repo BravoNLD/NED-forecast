@@ -1,9 +1,11 @@
 """Data update coordinator for NED Energy Forecast."""
+
 import logging
 from datetime import datetime, timedelta
 from typing import Any
 
 import aiohttp
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -55,10 +57,10 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                     activity=info["activity"],
                 )
                 data[key] = sensor_data
-                
+
                 if sensor_data:
                     _LOGGER.debug(
-                        "Fetched %d records for %s (current: %.1f MW)", 
+                        "Fetched %d records for %s (current: %.1f MW)",
                         len(sensor_data),
                         key,
                         sensor_data[0]["capacity"]
@@ -88,6 +90,7 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                             "percentage": None,
                         }
                     ]
+
                     data["coverage_percentage"] = [
                         {
                             "capacity": round(coverage_pct, 1),
@@ -95,14 +98,18 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                             "percentage": round(coverage_pct, 1),
                         }
                     ]
-                    
+
                     _LOGGER.info(
                         "Energy summary: Renewable %.1f MW / Consumption %.1f MW = %.1f%% coverage",
                         total_renewable,
                         consumption,
                         coverage_pct,
                     )
-                    
+
+                    # ========== EPEX SPOTPRIJS BEREKENING ==========
+                    # Bereken: prijs = 0.000462 × restlast_MW + 0.000647 × consumptie_MW - 4.4074
+                    self._calculate_epex_forecast(data)
+
                 except (KeyError, ValueError, IndexError, TypeError) as err:
                     _LOGGER.warning("Could not calculate derived values: %s", err)
 
@@ -111,6 +118,91 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
         except Exception as err:
             _LOGGER.exception("Error fetching data")
             raise UpdateFailed(f"Error communicating with NED API: {err}") from err
+
+    def _calculate_epex_forecast(self, data: dict[str, Any]) -> None:
+        """
+        Bereken EPEX spotprijs forecast op basis van formule:
+        prijs (ct/kWh) = 0.000462 × restlast_MW + 0.000647 × consumptie_MW - 4.4074
+        
+        Waarbij:
+        - restlast_MW = consumptie - (wind_onshore + wind_offshore + solar)
+        - consumptie_MW = consumption
+        """
+        try:
+            # Haal alle timeseries op
+            wind_onshore = data.get("wind_onshore", [])
+            wind_offshore = data.get("wind_offshore", [])
+            solar = data.get("solar", [])
+            consumption = data.get("consumption", [])
+
+            # Check of alle series data hebben
+            if not all([wind_onshore, wind_offshore, solar, consumption]):
+                _LOGGER.warning("EPEX berekening overgeslagen: niet alle bron-data beschikbaar")
+                return
+
+            # Maak een dict met timestamp als key om data te combineren
+            combined: dict[str, dict[str, float]] = {}
+
+            # Verzamel wind onshore
+            for record in wind_onshore:
+                ts = record.get("timestamp")
+                if ts:
+                    combined[ts] = {"wind_onshore": float(record.get("capacity", 0))}
+
+            # Voeg wind offshore toe
+            for record in wind_offshore:
+                ts = record.get("timestamp")
+                if ts and ts in combined:
+                    combined[ts]["wind_offshore"] = float(record.get("capacity", 0))
+
+            # Voeg solar toe
+            for record in solar:
+                ts = record.get("timestamp")
+                if ts and ts in combined:
+                    combined[ts]["solar"] = float(record.get("capacity", 0))
+
+            # Voeg consumption toe
+            for record in consumption:
+                ts = record.get("timestamp")
+                if ts and ts in combined:
+                    combined[ts]["consumption"] = float(record.get("capacity", 0))
+
+            # Bereken EPEX voor elk tijdstip waar we alle 4 waardes hebben
+            epex_forecast: list[dict] = []
+
+            for timestamp, values in sorted(combined.items()):
+                # Controleer of alle waardes aanwezig zijn
+                if all(k in values for k in ["wind_onshore", "wind_offshore", "solar", "consumption"]):
+                    # Bereken totale hernieuwbare opwek
+                    total_renewable = values["wind_onshore"] + values["wind_offshore"] + values["solar"]
+                    
+                    # Bereken restlast (consumptie - hernieuwbare opwek)
+                    restlast_mw = values["consumption"] - total_renewable
+                    consumptie_mw = values["consumption"]
+                    
+                    # Nieuwe formule: prijs = 0.000462 × restlast_MW + 0.000647 × consumptie_MW - 4.4074
+                    epex_price = (0.00127 * restlast_mw) + 1.5
+
+                    epex_forecast.append({
+                        "capacity": round(epex_price, 3),  # EPEX prijs in ct/kWh, 3 decimalen
+                        "timestamp": timestamp,
+                        "percentage": None,
+                    })
+
+            # Sla resultaat op
+            if epex_forecast:
+                data["epex_price_forecast"] = epex_forecast
+                _LOGGER.info(
+                    "EPEX forecast berekend: %d datapunten, huidige prijs: %.3f ct/kWh (restlast: %.1f MW)",
+                    len(epex_forecast),
+                    epex_forecast[0]["capacity"],
+                    values["consumption"] - (values["wind_onshore"] + values["wind_offshore"] + values["solar"])
+                )
+            else:
+                _LOGGER.warning("EPEX berekening resulteerde in geen data")
+
+        except Exception as err:
+            _LOGGER.error("Fout bij berekenen EPEX forecast: %s", err, exc_info=True)
 
     async def _fetch_sensor_data(self, type_id: int, activity: int) -> list[dict]:
         """Fetch data for a specific sensor from the API."""
@@ -144,10 +236,9 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                 ) as response:
                     if response.status == 401:
                         raise UpdateFailed("Invalid API key")
-                    
                     if response.status == 403:
                         raise UpdateFailed("API access forbidden - check your API key")
-                    
+
                     if response.status != 200:
                         error_text = await response.text()
                         _LOGGER.error(
@@ -170,7 +261,7 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                         # ⚡ API geeft capacity in Watt, we willen MW
                         capacity_watt = float(record.get("capacity", 0))
                         capacity_mw = capacity_watt / 1000.0
-                        
+
                         parsed.append(
                             {
                                 "capacity": capacity_mw,  # Converted to MW
@@ -182,7 +273,7 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
 
                     # Sort by timestamp (oudste eerst = chronologisch)
                     parsed.sort(key=lambda x: x["timestamp"] or "")
-                    
+
                     return parsed
 
         except aiohttp.ClientError as err:
