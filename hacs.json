@@ -2,5 +2,5 @@
   "name": "NED Energy Forecast",
   "render_readme": true,
   "homeassistant": "2025.11.0",
-  "zip_release": true
+  "zip_release": false
 }
