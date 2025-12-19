@@ -4,7 +4,7 @@
   "config_flow": true,
   "documentation": "https://github.com/BravoNLD/NED-forecast",
   "issue_tracker": "https://github.com/BravoNLD/NED-forecast/issues",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "codeowners": ["@BravoNLD"],
   "dependencies": [],
   "iot_class": "cloud_polling",
