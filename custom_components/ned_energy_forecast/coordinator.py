@@ -191,7 +191,7 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
 
             # Sla resultaat op
             if epex_forecast:
-                data["epex_price_forecast"] = epex_forecast
+                data["forecast_epex_price"] = epex_forecast
                 _LOGGER.info(
                     "EPEX forecast berekend: %d datapunten, huidige prijs: %.3f ct/kWh (restlast: %.1f GW)",
                     len(epex_forecast),
