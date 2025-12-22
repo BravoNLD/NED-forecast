@@ -227,7 +227,7 @@ series:
       return entity.attributes.forecast.map((entry) => {
         return [new Date(entry.datetime).getTime(), entry.value];
       });
-  - entity: sensor.ned_forecast_epex_price
+  - entity: sensor.forecast_epex_price
     name: EPEX Prijs
     type: line
     color: white
