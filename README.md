@@ -121,7 +121,7 @@ stacked: true
 yaxis:
   - id: Volume
     decimals: 0
-    align_to: 1000
+    align_to: 1
     apex_config:
       tickAmount: 6
       labels:
