@@ -134,58 +134,67 @@ class NEDEnergySensor(CoordinatorEntity[NEDEnergyDataUpdateCoordinator], SensorE
         return None
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any] | None:
-        """Return additional attributes."""
-        sensor_data = self.coordinator.data.get(self._key)
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra state attributes."""
+        if not self.coordinator.data:
+            return {}
+
+        sensor_data = self.coordinator.data.get(self.sensor_type, [])
         if not sensor_data:
-            return None
+            return {}
 
-        # Gebruik dezelfde logica om het huidige record te vinden
-        now = datetime.now()
-        current_record = None
+        attributes = {}
+
+        # ✅ Speciale attributes voor model_r2_score sensor
+        if self.sensor_type == "model_r2_score" and sensor_data:
+            latest = sensor_data[0]
         
-        for record in sensor_data:
-            timestamp_str = record.get("timestamp")
-            if timestamp_str:
-                try:
-                    ts_clean = timestamp_str.replace('Z', '+00:00')
-                    record_time = datetime.fromisoformat(ts_clean)
-                    
-                    if now.tzinfo is None and record_time.tzinfo is not None:
-                        record_time = record_time.replace(tzinfo=None)
-                    
-                    if record_time <= now:
-                        current_record = record
-                    else:
-                        break
-                except (ValueError, AttributeError):
-                    continue
+            # Training dataset info
+            if "datapoints" in latest:
+                attributes["training_datapoints"] = latest["datapoints"]
         
-        if current_record is None:
-            current_record = sensor_data[0]
-
-        attributes = {
-            "last_updated": current_record.get("timestamp"),
-            "percentage": current_record.get("percentage"),
-            "api_last_update": current_record.get("last_update"),
-        }
+            # Last fit timestamp
+            if "last_fit" in latest:
+                attributes["last_fit_time"] = latest["last_fit"]
         
-        import logging
-        _LOGGER = logging.getLogger(__name__)
-        _LOGGER.debug(f"Total records available for {self._key}: {len(sensor_data)}")
+            # Model coefficients (indien beschikbaar)
+            if self.coordinator.lr_model:
+                attributes["model_intercept"] = round(self.coordinator.lr_model.intercept, 4)
+                attributes["model_coefficients"] = [round(c, 4) for c in self.coordinator.lr_model.coefficients]
+                attributes["feature_names"] = [
+                    "consumption_gw",
+                    "wind_onshore_gw", 
+                    "wind_offshore_gw",
+                    "solar_gw",
+                    "net_demand_gw"
+                ]
+        
+            return attributes
 
-        # Add forecast - alle toekomstige waarden
-        forecast_list = []
-        for record in sensor_data:
-            forecast_list.append(
-                {
-                    "datetime": record.get("timestamp"),
-                    "value": round(float(record.get("capacity", 0)), 1),
-                }
-            )
-
-        if forecast_list:
+        # Voor forecast sensoren: voeg forecast data toe
+        if len(sensor_data) > 1:
+            forecast_list = []
+            for record in sensor_data[1:]:  # Skip first (current)
+                forecast_list.append(
+                    {
+                        "datetime": record.get("timestamp"),
+                        "value": record.get("capacity"),
+                    }
+                )
+        
             attributes["forecast"] = forecast_list
-            attributes["forecast_hours"] = len(forecast_list)
+            attributes["forecast_points"] = len(forecast_list)
+
+        # First en last update timestamps
+        if sensor_data:
+            first = sensor_data[0]
+            last = sensor_data[-1]
+        
+            if first.get("timestamp"):
+                attributes["first_forecast_time"] = first["timestamp"]
+            if last.get("timestamp"):
+                attributes["last_forecast_time"] = last["timestamp"]
+            if first.get("last_update"):
+                attributes["last_api_update"] = first["last_update"]
 
         return attributes
