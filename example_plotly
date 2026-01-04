@@ -1,0 +1,433 @@
+## Thanks to Bschnitz for making this plotly config ##
+type: custom:plotly-graph
+width: 800px
+hours_to_show: 120h
+refresh_interval: 60
+update_now_every_minute: true
+fn: |
+  $fn ({ hass, vars }) => {
+
+    const SURCHARGE = 14;
+    const WINDOW = 4;
+
+    // Detect mobile vs desktop
+    const isMobile = window.innerWidth < 768;
+    const hoursToShow = isMobile ? 72 : 120; // 3 days mobile, 5 days desktop
+
+    const start = Date.now();
+    const end = start + hoursToShow * 3600000;
+
+    vars.shapes = [];
+    vars.annotations = [];
+    const usedAnnotationYs = [];
+
+    const forecast =
+      hass.states["sensor.forecast_epex_price"]?.attributes?.forecast || [];
+
+    let cheapest = null;
+    let expensive = null;
+
+    forecast.forEach(e => {
+      const t = new Date(e.datetime).getTime();
+      if (t < start || t > end) return;
+
+      const p = e.value + SURCHARGE;
+      if (!cheapest || p < cheapest.p) cheapest = { t, p };
+      if (!expensive || p > expensive.p) expensive = { t, p };
+    });
+
+    const getFreeY = (base = 1.05) => {
+      let y = base;
+      while (usedAnnotationYs.some(v => Math.abs(v - y) < 0.04)) {
+        y += 0.04;
+      }
+      usedAnnotationYs.push(y);
+      return y;
+    };
+
+    let best = null;
+    let worst = null;
+
+    for (let i = 0; i <= forecast.length - WINDOW; i++) {
+      let sum = 0;
+      let valid = true;
+
+      const t0 = new Date(forecast[i].datetime).getTime();
+
+      for (let j = 0; j < WINDOW; j++) {
+        const tj = new Date(forecast[i + j].datetime).getTime();
+        if (tj < start || tj > end) valid = false;
+        if (tj - t0 !== j * 3600000) valid = false;
+        sum += forecast[i + j].value + SURCHARGE;
+      }
+
+      if (!valid) continue;
+
+      const avg = sum / WINDOW;
+
+      if (!best || avg < best.avg) best = { avg, start: t0 };
+      if (!worst || avg > worst.avg) worst = { avg, start: t0 };
+    }
+
+    // Add best price window block
+    if (best) {
+      vars.shapes.push({
+        type: "rect",
+        x0: best.start,
+        x1: best.start + WINDOW * 3600000,
+        y0: 0,
+        y1: 1,
+        yref: "paper",
+        fillcolor: "rgba(0, 169, 100, 0.15)",
+        line: {
+          color: "#00a964",
+          width: 2
+        },
+        layer: "below"
+      });
+
+      vars.annotations.push({
+        x: 0.5,
+        y: 1.18,
+        xref: "paper",
+        yref: "paper",
+        text: isMobile
+          ? `🔋 ${best.avg.toFixed(1)} ct/kWh · ` +
+            new Date(best.start).toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short"
+            }) + " " +
+            new Date(best.start).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit"
+            }) + "–" +
+            new Date(best.start + WINDOW * 3600000).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit"
+            })
+          : `🔋 <b>Best price window</b>: ${best.avg.toFixed(1)} ct/kWh · ` +
+            new Date(best.start).toLocaleDateString("en-GB", {
+              weekday: "short",
+              day: "2-digit",
+              month: "short"
+            }) + " " +
+            new Date(best.start).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit"
+            }) + " → " +
+            new Date(best.start + WINDOW * 3600000).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit"
+            }),
+        showarrow: false,
+        font: { color: "#00a964", size: isMobile ? 11 : 13 },
+        xanchor: "center"
+      });
+    }
+
+    // Add worst price window block
+    if (worst) {
+      vars.shapes.push({
+        type: "rect",
+        x0: worst.start,
+        x1: worst.start + WINDOW * 3600000,
+        y0: 0,
+        y1: 1,
+        yref: "paper",
+        fillcolor: "rgba(255, 46, 46, 0.15)",
+        line: {
+          color: "#FF2E2E",
+          width: 2
+        },
+        layer: "below"
+      });
+
+      vars.annotations.push({
+        x: 0.5,
+        y: 0,
+        yanchor: "top",
+        yshift: isMobile ? -35 : -45,
+        xref: "paper",
+        yref: "paper",
+        text: isMobile
+          ? `⚠️ ${worst.avg.toFixed(1)} ct/kWh · ` +
+            new Date(worst.start).toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short"
+            }) + " " +
+            new Date(worst.start).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit"
+            }) + "–" +
+            new Date(worst.start + WINDOW * 3600000).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit"
+            })
+          : `⚠️ <b>Worst price window</b>: ${worst.avg.toFixed(1)} ct/kWh · ` +
+            new Date(worst.start).toLocaleDateString("en-GB", {
+              weekday: "short",
+              day: "2-digit",
+              month: "short"
+            }) + " " +
+            new Date(worst.start).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit"
+            }) + " → " +
+            new Date(worst.start + WINDOW * 3600000).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit"
+            }),
+        showarrow: false,
+        font: { color: "#FF2E2E", size: isMobile ? 10 : 12 },
+        xanchor: "center"
+      });
+    }
+
+    // Store values for layout access
+    vars.isMobile = isMobile;
+    vars.hoursToShow = hoursToShow;
+    vars.chartHeight = isMobile ? 350 : 450;
+    vars.marginL = isMobile ? 45 : 60;
+    vars.marginR = isMobile ? 50 : 70;
+    vars.marginT = isMobile ? 55 : 70;
+    vars.marginB = isMobile ? 70 : 90;
+    vars.tickFormat = isMobile ? "%d %b" : "%a %d %b";
+  }
+layout:
+  height: $ex vars.chartHeight || 450
+  barmode: stack
+  hovermode: x unified
+  dragmode: false
+  showlegend: false
+  hoverlabel:
+    namelength: 0
+  margin:
+    l: $ex vars.marginL || 60
+    r: $ex vars.marginR || 70
+    t: $ex vars.marginT || 70
+    b: $ex vars.marginB || 90
+  xaxis:
+    type: date
+    tickformat: $ex vars.tickFormat || "%a %d %b"
+    fixedrange: true
+    dtick: 86400000
+    showspikes: false
+    hoverformat: "%a %d %b %H:%M"
+    range:
+      - $ex new Date().toISOString()
+      - >-
+        $ex new Date(Date.now() + (vars.hoursToShow ||
+        120)*60*60*1000).toISOString()
+  yaxis:
+    title: ct/kWh
+    side: left
+    rangemode: tozero
+    fixedrange: true
+    dtick: 5
+    showgrid: true
+    gridcolor: rgba(255,255,255,0.1)
+    griddash: dash
+  yaxis2:
+    title: GW
+    overlaying: "y"
+    side: right
+    fixedrange: true
+    rangemode: tozero
+  shapes: $ex vars.shapes
+  annotations: $ex vars.annotations
+config:
+  scrollZoom: false
+  displayModeBar: true
+  doubleClick: false
+entities:
+  - entity: sensor.ned_forecast_wind_onshore
+    type: bar
+    yaxis: y2
+    hovertemplate: <b>🌬️🌳 %{y:.1f} GW</b><extra></extra>
+    hoverlabel:
+      namelength: 0
+    legendrank: 4
+    marker:
+      color: "#0EA5E9"
+      opacity: 0.6
+    filters:
+      - fn: |
+          ({ meta }) => ({
+            xs: meta.forecast.map(e => new Date(e.datetime)),
+            ys: meta.forecast.map(e => e.value)
+          })
+  - entity: sensor.ned_forecast_wind_offshore
+    type: bar
+    yaxis: y2
+    hovertemplate: <b>🌬️🌊 %{y:.1f} GW</b><extra></extra>
+    hoverlabel:
+      namelength: 0
+    legendrank: 5
+    marker:
+      color: "#14B8A6"
+      opacity: 0.6
+    filters:
+      - fn: |
+          ({ meta }) => ({
+            xs: meta.forecast.map(e => new Date(e.datetime)),
+            ys: meta.forecast.map(e => e.value)
+          })
+  - entity: sensor.ned_forecast_solar
+    type: bar
+    yaxis: y2
+    hovertemplate: <b>🌞⚡ %{y:.1f} GW</b><extra></extra>
+    hoverlabel:
+      namelength: 0
+    legendrank: 3
+    marker:
+      color: "#FBBF24"
+      opacity: 0.6
+    filters:
+      - fn: |
+          ({ meta }) => ({
+            xs: meta.forecast.map(e => new Date(e.datetime)),
+            ys: meta.forecast.map(e => e.value)
+          })
+  - entity: sensor.ned_forecast_consumption
+    type: scatter
+    mode: lines
+    yaxis: y2
+    hovertemplate: <b>🧑‍🤝‍🧑⚡ %{y:.1f} GW</b><extra></extra>
+    hoverlabel:
+      namelength: 0
+    legendrank: 2
+    line:
+      color: "#f97316"
+      opacity: 0.6
+      width: 2
+      shape: spline
+    filters:
+      - fn: |
+          ({ meta }) => ({
+            xs: meta.forecast.map(e => new Date(e.datetime)),
+            ys: meta.forecast.map(e => e.value)
+          })
+  - entity: sensor.forecast_epex_price
+    yaxis: "y"
+    type: scatter
+    mode: lines
+    hovertemplate: <b>€ %{y:.1f} ct/kWh</b><extra></extra>
+    hoverlabel:
+      namelength: 0
+    legendrank: 1
+    line:
+      color: rgba(255,255,255,0.2)
+      width: 2
+      shape: spline
+    filters:
+      - fn: |
+          ({ meta }) => ({
+            xs: meta.forecast.map(e => new Date(e.datetime)),
+            ys: meta.forecast.map(e => e.value + 14)
+          })
+  - entity: sensor.forecast_epex_price
+    yaxis: "y"
+    type: scatter
+    mode: lines
+    name: Cheap
+    hovertemplate: <b><span style="color:#00a964">€</span> Cheap</b><extra></extra>
+    showlegend: false
+    legendrank: 6
+    line:
+      color: "#00a964"
+      width: 6
+      shape: spline
+    filters:
+      - fn: |
+          ({ meta }) => {
+            const p = meta.forecast.map(e => e.value + 14);
+            const sorted = [...p].sort((a,b)=>a-b);
+            const t = sorted[Math.floor(sorted.length * 0.25)];
+            const r = { xs: [], ys: [] };
+
+            for (let i = 0; i < p.length; i++) {
+              if (
+                p[i] <= t ||
+                (i && p[i - 1] <= t) ||
+                (i < p.length - 1 && p[i + 1] <= t)
+              ) {
+                r.xs.push(new Date(meta.forecast[i].datetime));
+                r.ys.push(p[i]);
+              } else if (r.xs.length) {
+                r.xs.push(null);
+                r.ys.push(null);
+              }
+            }
+            return r;
+          }
+  - entity: sensor.forecast_epex_price
+    yaxis: "y"
+    type: scatter
+    mode: lines
+    name: Common
+    hovertemplate: <b><span style="color:#FFD700">€</span> Common</b><extra></extra>
+    showlegend: false
+    legendrank: 7
+    line:
+      color: "#FFD700"
+      width: 6
+      shape: spline
+    filters:
+      - fn: |
+          ({ meta }) => {
+            const p = meta.forecast.map(e => e.value + 14);
+            const sorted = [...p].sort((a,b)=>a-b);
+            const p25 = sorted[Math.floor(sorted.length * 0.25)];
+            const p75 = sorted[Math.floor(sorted.length * 0.75)];
+            const r = { xs: [], ys: [] };
+
+            for (let i = 0; i < p.length; i++) {
+              if (
+                (p[i] > p25 && p[i] < p75) ||
+                (i && p[i - 1] > p25 && p[i - 1] < p75) ||
+                (i < p.length - 1 && p[i + 1] > p25 && p[i + 1] < p75)
+              ) {
+                r.xs.push(new Date(meta.forecast[i].datetime));
+                r.ys.push(p[i]);
+              } else if (r.xs.length) {
+                r.xs.push(null);
+                r.ys.push(null);
+              }
+            }
+            return r;
+          }
+  - entity: sensor.forecast_epex_price
+    yaxis: "y"
+    type: scatter
+    mode: lines
+    name: Expensive
+    hovertemplate: <b><span style="color:#FF2E2E">€</span> Expensive</b><extra></extra>
+    showlegend: false
+    legendrank: 8
+    line:
+      color: "#FF2E2E"
+      width: 6
+      shape: spline
+    filters:
+      - fn: |
+          ({ meta }) => {
+            const p = meta.forecast.map(e => e.value + 14);
+            const sorted = [...p].sort((a,b)=>a-b);
+            const t = sorted[Math.floor(sorted.length * 0.75)];
+            const r = { xs: [], ys: [] };
+
+            for (let i = 0; i < p.length; i++) {
+              if (
+                p[i] >= t ||
+                (i && p[i - 1] >= t) ||
+                (i < p.length - 1 && p[i + 1] >= t)
+              ) {
+                r.xs.push(new Date(meta.forecast[i].datetime));
+                r.ys.push(p[i]);
+              } else if (r.xs.length) {
+                r.xs.push(null);
+                r.ys.push(null);
+              }
+            }
+            return r;
+          }
