@@ -41,9 +41,12 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize."""
         self.hass = hass
+        self.entry = entry  # ✅ Bewaar entry reference voor later
         self.api_key: str = entry.data[CONF_API_KEY]
-        self.forecast_hours: int = entry.data.get(CONF_FORECAST_HOURS, 144)
-        self.price_sensor: str = entry.data.get(CONF_PRICE_SENSOR)
+        
+        # ✅ GEFIXED: Haal opties uit entry.options (niet entry.data)
+        self.forecast_hours: int = entry.options.get(CONF_FORECAST_HOURS, 48)
+        self.price_sensor: str | None = entry.options.get(CONF_PRICE_SENSOR)
         
         # Linear regression model (cache tussen refits)
         self.lr_model: LinearRegression | None = None
@@ -130,7 +133,11 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                     )
 
                     # ========== EPEX SPOTPRIJS FORECAST MET LINEAR REGRESSION ==========
-                    await self._calculate_epex_forecast_lr(data)
+                    # ✅ Alleen berekenen als price_sensor is geconfigureerd
+                    if self.price_sensor:
+                        await self._calculate_epex_forecast_lr(data)
+                    else:
+                        _LOGGER.debug("Price sensor niet geconfigureerd, EPEX forecast overgeslagen")
                     
                     # ✅ NIEUW: Voeg R² score toe als sensor
                     if self.model_r2_score is not None:
@@ -172,6 +179,11 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
         - epex_price (ct/kWh) uit de user-geconfigureerde prijssensor
         """
         try:
+            # ✅ Check of price sensor is ingesteld
+            if not self.price_sensor:
+                _LOGGER.debug("Price sensor niet ingesteld, EPEX forecast overgeslagen")
+                return
+            
             # Fit model dagelijks om 02:07 (of bij eerste run)
             if self.lr_model is None or self._should_refit():
                 await self._fit_lr_model()
@@ -330,6 +342,11 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
     async def _fit_lr_model(self) -> None:
         """Fit Linear Regression model op basis van 30 dagen historische data uit recorder."""
         try:
+            # ✅ Check of price sensor is ingesteld
+            if not self.price_sensor:
+                _LOGGER.info("Price sensor niet ingesteld, model fit overgeslagen")
+                return
+            
             _LOGGER.info("Start Linear Regression model fit...")
         
             # Haal 30 dagen historische data op uit recorder
@@ -599,5 +616,8 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
         self._schedule_hourly_update()
         self._schedule_daily_refit()
         
-        # Trigger eerste refit
-        await self._fit_lr_model()
+        # ✅ Alleen refit als price sensor is ingesteld
+        if self.price_sensor:
+            await self._fit_lr_model()
+        else:
+            _LOGGER.info("Price sensor niet ingesteld, model fit overgeslagen bij startup")
