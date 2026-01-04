@@ -25,6 +25,8 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# ⚡ Eerste X GW solar zit niet in consumption data
+SOLAR_NOT_IN_CONSUMPTION_GW = 3.0
 
 class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
     """Class to manage fetching NED Energy data from the API."""
@@ -33,7 +35,7 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
         """Initialize."""
         self.hass = hass
         self.api_key: str = entry.data[CONF_API_KEY]
-        self.forecast_hours: int = entry.data.get(CONF_FORECAST_HOURS, 168)
+        self.forecast_hours: int = entry.data.get(CONF_FORECAST_HOURS, 144)
 
         super().__init__(
             hass,
@@ -79,7 +81,9 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                     ts = data["wind_onshore"][0]["timestamp"]
 
                     # Calculate totals
-                    total_renewable = wind_on + wind_off + solar_val
+                    # Trek eerste X GW af van solar (wordt achter de meter verbruikt)
+                    solar_on_grid = max(0, solar_val - SOLAR_NOT_IN_CONSUMPTION_GW)
+                    total_renewable = wind_on + wind_off + solar_on_grid
                     coverage_pct = (total_renewable / consumption * 100) if consumption > 0 else 0.0
 
                     # Store as single-item lists for consistency
@@ -107,7 +111,7 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                     )
 
                     # ========== EPEX SPOTPRIJS BEREKENING ==========
-                    # Bereken: prijs = (1.27 * restlast_gw) + 1.5
+                    # Bereken: prijs = (1.07 * restlast_gw) + 1.5
                     self._calculate_epex_forecast(data)
 
                 except (KeyError, ValueError, IndexError, TypeError) as err:
@@ -122,10 +126,10 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
     def _calculate_epex_forecast(self, data: dict[str, Any]) -> None:
         """
         Bereken EPEX spotprijs forecast op basis van formule:
-        prijs (ct/kWh) = (1.27 * restlast_gw) + 1.5
+        prijs (ct/kWh) = (1.07 * restlast_gw) + 0.45
         
         Waarbij:
-        - restlast_GW = consumptie - (wind_onshore + wind_offshore + solar)
+        - restlast_GW = consumptie - (wind_onshore + wind_offshore + solar_on_grid)
         - consumptie_GW = consumption
         """
         try:
@@ -173,15 +177,18 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
             for timestamp, values in sorted(combined.items()):
                 # Controleer of alle waardes aanwezig zijn
                 if all(k in values for k in ["wind_onshore", "wind_offshore", "solar", "consumption"]):
+                    # Trek 3 GW af van solar (eerste 3 GW zit niet in consumption)
+                    solar_on_grid = max(0, values["solar"] - SOLAR_NOT_IN_CONSUMPTION_GW)
+                    
                     # Bereken totale hernieuwbare opwek
-                    total_renewable = values["wind_onshore"] + values["wind_offshore"] + values["solar"]
+                    total_renewable = values["wind_onshore"] + values["wind_offshore"] + solar_on_grid
                     
                     # Bereken restlast (consumptie - hernieuwbare opwek)
                     restlast_gw = values["consumption"] - total_renewable
                     consumptie_gw = values["consumption"]
                     
-                    # Nieuwe formule: prijs = 1.27 × restlast_GW + 1.5
-                    epex_price = (1.27 * restlast_gw) + 1.5
+                    # Nieuwe formule: prijs = 1.07 × restlast_GW + 1.5
+                    epex_price = (1.08 * restlast_gw) + 0.45
 
                     epex_forecast.append({
                         "capacity": round(epex_price, 3),  # EPEX prijs in ct/kWh, 3 decimalen
@@ -196,7 +203,7 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                     "EPEX forecast berekend: %d datapunten, huidige prijs: %.3f ct/kWh (restlast: %.1f GW)",
                     len(epex_forecast),
                     epex_forecast[0]["capacity"],
-                    values["consumption"] - (values["wind_onshore"] + values["wind_offshore"] + values["solar"])
+                    values["consumption"] - (values["wind_onshore"] + values["wind_offshore"] + max(0, values["solar"] - SOLAR_NOT_IN_CONSUMPTION_GW))
                 )
             else:
                 _LOGGER.warning("EPEX berekening resulteerde in geen data")
