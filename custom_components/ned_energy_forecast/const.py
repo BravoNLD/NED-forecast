@@ -9,6 +9,13 @@ DEFAULT_SCAN_INTERVAL = timedelta(hours=1)
 CONF_API_KEY = "api_key"
 CONF_FORECAST_HOURS = "forecast_hours"
 
+# ===== Linear Regression Configuratie =====
+CONF_PRICE_SENSOR = "price_sensor"
+REFIT_TIME = "02:07"
+ROLLING_WINDOW_DAYS = 30
+MIN_DATAPOINTS = 100
+# ================================================
+
 # NED API Data Types
 DATA_TYPE_WIND_ONSHORE = 1
 DATA_TYPE_SOLAR = 2
@@ -25,6 +32,9 @@ ACTIVITY_CONSUMPTION = 2
 # NED API Granularity
 GRANULARITY_HOURLY = 5
 GRANULARITY_TIMEZONE_CET = 1
+
+# ⚡ Eerste X GW solar zit niet in consumption data
+SOLAR_NOT_IN_CONSUMPTION_GW = 3.0
 
 # Sensor definitions
 SENSOR_TYPES = {
@@ -71,7 +81,16 @@ SENSOR_TYPES = {
     "forecast_epex_price": {
         "name": "Forecast Epex Price",
         "icon": "mdi:cash-multiple",
-        "unit": "ct/kWh",  # of "" als je geen eenheid wilt
+        "unit": "ct/kWh",
         "calculated": True,
+    },
+    # ✅ NIEUW: R² Score sensor
+    "model_r2_score": {
+        "name": "EPEX Model R² Score",
+        "icon": "mdi:chart-line",
+        "unit": None,
+        "calculated": True,
+        "device_class": None,
+        "state_class": "measurement",
     }
 }
