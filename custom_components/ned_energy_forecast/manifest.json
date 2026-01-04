@@ -3,10 +3,10 @@
   "name": "NED Energy Forecast",
   "codeowners": ["@BravoNLD"],
   "config_flow": true,
-  "dependencies": [aiohttp],
+  "dependencies": ["aiohttp"],
   "documentation": "https://github.com/BravoNLD/NED-forecast#readme",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/BravoNLD/NED-forecast/issues",
-  "requirements": [recorder],
+  "requirements": ["recorder"],
   "version": "1.1.8"
 }
