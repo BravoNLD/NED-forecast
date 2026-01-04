@@ -9,7 +9,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
-from .coordinator import NEDDataUpdateCoordinator
+from .coordinator import NEDEnergyDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up NED Energy Forecast from a config entry."""
-    coordinator = NEDDataUpdateCoordinator(hass, entry)
+    coordinator = NEDEnergyDataUpdateCoordinator(hass, entry)
     
     await coordinator.async_config_entry_first_refresh()
     
