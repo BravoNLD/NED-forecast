@@ -1,100 +1,55 @@
 """Config flow for NED Energy Forecast integration."""
+from __future__ import annotations
+
 import logging
 from typing import Any
+
 import aiohttp
 import voluptuous as vol
-from datetime import datetime, timedelta
 
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers import selector
 from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
     DOMAIN,
-    API_BASE_URL,
-    API_ENDPOINT,
     CONF_API_KEY,
     CONF_FORECAST_HOURS,
+    CONF_PRICE_SENSOR,
+    API_BASE_URL,
+    API_ENDPOINT,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-STEP_USER_DATA_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_API_KEY): str,
-        vol.Optional(CONF_FORECAST_HOURS, default=168): vol.All(
-            vol.Coerce(int), vol.Range(min=1, max=336)
-        ),
-    }
-)
-
-
-async def test_api_connection(api_key: str) -> bool:
-    """Test if we can connect to the NED API."""
+async def validate_api_key(hass: HomeAssistant, api_key: str) -> bool:
+    """Validate the API key by making a test request."""
     url = f"{API_BASE_URL}{API_ENDPOINT}"
-    
-    now = datetime.now()
-    start_date = now.strftime("%Y-%m-%d")
-    end_date = (now + timedelta(hours=24)).strftime("%Y-%m-%d")
-    
     headers = {
         "X-AUTH-TOKEN": api_key,
         "accept": "application/ld+json",
     }
-    
     params = {
         "point": 0,
         "type": 1,  # Wind onshore
-        "granularity": 5,  # ✅ HOURLY (was: "hour")
-        "granularitytimezone": 1,  # ✅ CET (was: "Europe/Amsterdam")
-        "classification": 1,  # FORECAST
-        "activity": 1,  # PRODUCTION
-        "validfrom[after]": start_date,
-        "validfrom[strictly_before]": end_date,
+        "granularity": 5,
+        "granularitytimezone": 1,
+        "classification": 1,
+        "activity": 1,
     }
-    
+
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(
-                url, headers=headers, params=params, timeout=30
-            ) as response:
-                if response.status == 401:
-                    _LOGGER.error("Invalid API key")
-                    return False
-                
-                if response.status == 403:
-                    _LOGGER.error("API access forbidden")
-                    return False
-                
-                if response.status != 200:
-                    error_text = await response.text()
-                    _LOGGER.error(
-                        "NED API test failed with status %s: %s",
-                        response.status,
-                        error_text,
-                    )
-                    return False
-                
-                data = await response.json()
-                records = data.get("hydra:member", [])
-                
-                if not records:
-                    _LOGGER.warning("API test returned no data")
-                    return False
-                
-                _LOGGER.info("API test successful, got %d records", len(records))
-                return True
-                
-    except aiohttp.ClientError as err:
-        _LOGGER.error("Connection error during API test: %s", err)
-        return False
+            async with session.get(url, headers=headers, params=params, timeout=10) as response:
+                return response.status == 200
     except Exception as err:
-        _LOGGER.exception("Unexpected error during API test")
+        _LOGGER.error("Error validating API key: %s", err)
         return False
 
 
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class NEDEnergyForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for NED Energy Forecast."""
 
     VERSION = 1
@@ -102,26 +57,80 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle the initial step."""
+        """Handle the initial step - API key."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
             try:
-                # Test the API connection
-                if not await test_api_connection(user_input[CONF_API_KEY]):
-                    errors["base"] = "cannot_connect"
+                # Validate API key
+                if not await validate_api_key(self.hass, user_input[CONF_API_KEY]):
+                    errors["base"] = "invalid_auth"
                 else:
-                    # Create the entry
-                    return self.async_create_entry(
-                        title="NED Energy Forecast",
-                        data=user_input,
-                    )
-            except Exception:
-                _LOGGER.exception("Unexpected exception during setup")
+                    # Store API key temporarily and move to next step
+                    self._api_key = user_input[CONF_API_KEY]
+                    self._forecast_hours = user_input.get(CONF_FORECAST_HOURS, 144)
+                    return await self.async_step_price_sensor()
+
+            except Exception:  # pylint: disable=broad-except
+                _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
 
         return self.async_show_form(
             step_id="user",
-            data_schema=STEP_USER_DATA_SCHEMA,
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_API_KEY): str,
+                    vol.Optional(CONF_FORECAST_HOURS, default=144): vol.All(
+                        vol.Coerce(int), vol.Range(min=1, max=168)
+                    ),
+                }
+            ),
             errors=errors,
         )
+
+    async def async_step_price_sensor(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle price sensor selection."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            # Valideer of de gekozen sensor bestaat
+            price_sensor = user_input[CONF_PRICE_SENSOR]
+            state = self.hass.states.get(price_sensor)
+            
+            if state is None:
+                errors["base"] = "sensor_not_found"
+            else:
+                # Create entry met alle configuratie
+                return self.async_create_entry(
+                    title="NED Energy Forecast",
+                    data={
+                        CONF_API_KEY: self._api_key,
+                        CONF_FORECAST_HOURS: self._forecast_hours,
+                        CONF_PRICE_SENSOR: price_sensor,
+                    },
+                )
+
+        return self.async_show_form(
+            step_id="price_sensor",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_PRICE_SENSOR): selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain="sensor")
+                    ),
+                }
+            ),
+            description_placeholders={
+                "description": "Selecteer de EPEX prijssensor die gebruikt wordt voor het trainen van het voorspellingsmodel. Dit kan een kale EPEX spotprijs zijn, of je eigen afrekenprijs van je energieprovider."
+            },
+            errors=errors,
+        )
+
+
+class CannotConnect(HomeAssistantError):
+    """Error to indicate we cannot connect."""
+
+
+class InvalidAuth(HomeAssistantError):
+    """Error to indicate there is invalid auth."""
