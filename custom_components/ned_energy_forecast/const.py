@@ -33,8 +33,8 @@ ACTIVITY_CONSUMPTION = 2
 GRANULARITY_HOURLY = 5
 GRANULARITY_TIMEZONE_CET = 1
 
-# ⚡ Eerste X GW solar zit niet in consumption data
-SOLAR_NOT_IN_CONSUMPTION_GW = 3.0
+# ⚡ Eerste 100-XX% GW solar zit niet in consumption data, 45% zelfverbruik lijkt het beste te passen.
+SOLAR_NOT_IN_CONSUMPTION_GW = 0.55
 
 # Sensor definitions
 SENSOR_TYPES = {
