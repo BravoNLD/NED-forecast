@@ -1,0 +1,220 @@
+## Made by Bschnitz ##
+type: horizontal-stack
+cards:
+  - type: custom:apexcharts-card
+    graph_span: 96h
+    span:
+      start: day
+      offset: +1d
+    stacked: true
+    header:
+      show: false
+    now:
+      show: false
+      label: Now
+      color: "#00d4ff"
+    yaxis:
+      - id: left
+        min: -9
+        decimals: 0
+        max: "|+2|"
+        apex_config:
+          tickAmount: 10
+          forceNiceScale: false
+          title:
+            text: cent per kWh
+            style:
+              color: "#00a964"
+              rotate: -90
+      - id: right
+        opposite: true
+        min: 0
+        decimals: 0
+        max: "|+2|"
+        apex_config:
+          forceNiceScale: true
+          title:
+            text: GW
+            style:
+              color: "#ff9800"
+              rotate: -90
+    series:
+      - entity: sensor.ned_forecast_consumption
+        type: line
+        yaxis_id: right
+        color: transparent
+        stroke_width: 0
+        show:
+          in_legend: false
+        data_generator: |
+          const d = entity.attributes.forecast;
+          const vals = d.map(e => e.value);
+          const maxVal = Math.max(...vals); 
+          return [
+            [new Date(d[0].datetime).getTime(), maxVal * 2],
+            [new Date(d[d.length - 1].datetime).getTime(), maxVal * 2]
+          ];
+      - entity: sensor.forecast_epex_price
+        name: Cheap
+        type: line
+        color: "#00a964"
+        yaxis_id: left
+        data_generator: >-
+          const
+          f=entity.attributes.forecast,p=f.map(e=>e.value+13),s=[...p].sort((a,b)=>a-b),t=s[Math.floor(s.length*0.25)];let
+          r=[],o=0;for(let
+          i=0;i<p.length;i++){if(p[i]<=t||(i>0&&p[i-1]<=t)||(i<p.length-1&&p[i+1]<=t)){r.push([new
+          Date(f[i].datetime).getTime(),p[i]]);o=1}else if(o){r.push([new
+          Date(f[i].datetime).getTime(),null]);o=0}}return r;
+      - entity: sensor.forecast_epex_price
+        name: Common
+        type: line
+        color: "#FFD700"
+        yaxis_id: left
+        data_generator: >-
+          const
+          f=entity.attributes.forecast,p=f.map(e=>e.value+13),s=[...p].sort((a,b)=>a-b),l=s[Math.floor(s.length*0.25)],h=s[Math.floor(s.length*0.75)];let
+          r=[];for(let
+          i=0;i<p.length;i++){if((p[i]>l&&p[i]<h)||(i>0&&p[i-1]>l&&p[i-1]<h)||(i<p.length-1&&p[i+1]>l&&p[i+1]<h))r.push([new
+          Date(f[i].datetime).getTime(),p[i]]);else
+          if(r.length&&r[r.length-1][1]!==null)r.push([new
+          Date(f[i].datetime).getTime(),null])}return r;
+      - entity: sensor.forecast_epex_price
+        name: Expensive
+        type: line
+        color: "#FF2E2E"
+        yaxis_id: left
+        data_generator: >-
+          const
+          f=entity.attributes.forecast,p=f.map(e=>e.value+13),s=[...p].sort((a,b)=>a-b),t=s[Math.floor(s.length*0.75)];let
+          r=[];for(let
+          i=0;i<p.length;i++){if(p[i]>=t||(i>0&&p[i-1]>=t)||(i<p.length-1&&p[i+1]>=t))r.push([new
+          Date(f[i].datetime).getTime(),p[i]]);else
+          if(r.length&&r[r.length-1][1]!==null)r.push([new
+          Date(f[i].datetime).getTime(),null])}return r;
+      - entity: sensor.ned_forecast_consumption
+        name: Consumption
+        type: line
+        color: "#f97316"
+        stroke_width: 2
+        yaxis_id: right
+        data_generator: >-
+          return entity.attributes.forecast.map(e=>[new
+          Date(e.datetime).getTime(),e.value]);
+      - entity: sensor.ned_forecast_wind_onshore
+        name: Wind Onshore
+        type: column
+        color: "#0EA5E9"
+        opacity: 0.8
+        yaxis_id: right
+        stack_group: renewable
+        group_by:
+          func: last
+          duration: 1h
+        data_generator: >-
+          return entity.attributes.forecast.map(e=>[new
+          Date(e.datetime).getTime(),e.value]);
+      - entity: sensor.ned_forecast_wind_offshore
+        name: Wind Offshore
+        type: column
+        color: "#14B8A6"
+        opacity: 0.8
+        yaxis_id: right
+        stack_group: renewable
+        group_by:
+          func: last
+          duration: 1h
+        data_generator: >-
+          return entity.attributes.forecast.map(e=>[new
+          Date(e.datetime).getTime(),e.value]);
+      - entity: sensor.ned_forecast_solar
+        name: Solar
+        type: column
+        color: "#FBBF24"
+        opacity: 0.8
+        yaxis_id: right
+        stack_group: renewable
+        group_by:
+          func: last
+          duration: 1h
+        data_generator: >-
+          return entity.attributes.forecast.map(e=>[new
+          Date(e.datetime).getTime(),e.value]);
+    apex_config:
+      chart:
+        type: line
+        height: 450
+        toolbar:
+          show: false
+        margin:
+          top: 30
+      legend:
+        show: false
+      stroke:
+        curve: straight
+        width:
+          - 0
+          - 6
+          - 6
+          - 6
+          - 2
+          - 0
+          - 0
+          - 0
+      plotOptions:
+        bar:
+          columnWidth: 70%
+      tooltip:
+        shared: true
+        followCursor: false
+        intersect: false
+        enabledOnSeries:
+          - 1
+          - 2
+          - 3
+        fixed:
+          enabled: true
+          position: topLeft
+          offsetX: 150
+          offsetY: 180
+      markers:
+        size: 0
+        hover:
+          size: 0
+      states:
+        hover:
+          filter:
+            type: none
+        active:
+          allowMultipleDataPointsSelection: false
+          filter:
+            type: none
+      grid:
+        show: true
+        borderColor: rgba(255,255,255,0.12)
+        strokeDashArray: 4
+        xaxis:
+          lines:
+            show: true
+      xaxis:
+        tooltip:
+          enabled: false
+        type: datetime
+        position: top
+        tickAmount: 4
+        labels:
+          show: true
+          datetimeUTC: false
+          format: ddd dd
+          offsetY: -5
+          style:
+            colors: "#cfcfcf"
+            fontSize: 13px
+            fontWeight: 600
+        axisTicks:
+          show: true
+          color: "#ffffff"
+          height: 6
+grid_options:
+  columns: 21
+  rows: auto
