@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -84,14 +85,48 @@ class NEDEnergySensor(CoordinatorEntity[NEDEnergyDataUpdateCoordinator], SensorE
 
     @property
     def native_value(self) -> Any:
-        """Return the state of the sensor."""
+        """Return the state of the sensor - current value based on timestamp."""
         sensor_data = self.coordinator.data.get(self._key)
         if not sensor_data:
             return None
 
-        # Get the most recent (first) record
-        latest = sensor_data[0]
-        value = latest.get("capacity")
+        # Vind het record dat het dichtst bij het huidige moment ligt
+        import logging
+        _LOGGER = logging.getLogger(__name__)
+        
+        now = datetime.now()
+        
+        # Zoek naar het meest recente record dat niet in de toekomst ligt
+        current_record = None
+        for record in sensor_data:
+            timestamp_str = record.get("timestamp")
+            if timestamp_str:
+                try:
+                    # Parse de timestamp - probeer verschillende formaten
+                    # Verwijder 'Z' en vervang met timezone info
+                    ts_clean = timestamp_str.replace('Z', '+00:00')
+                    record_time = datetime.fromisoformat(ts_clean)
+                    
+                    # Maak record_time naive als now ook naive is
+                    if now.tzinfo is None and record_time.tzinfo is not None:
+                        record_time = record_time.replace(tzinfo=None)
+                    
+                    # Als dit record in het verleden of heden ligt
+                    if record_time <= now:
+                        current_record = record
+                    else:
+                        # We zijn bij toekomstige records aangekomen, stop
+                        break
+                except (ValueError, AttributeError) as err:
+                    _LOGGER.debug(f"Could not parse timestamp {timestamp_str}: {err}")
+                    continue
+        
+        # Als we geen huidig record vonden, neem het eerste record
+        if current_record is None:
+            _LOGGER.debug(f"No current record found for {self._key}, using first record")
+            current_record = sensor_data[0]
+        
+        value = current_record.get("capacity")
 
         if isinstance(value, (int, float)):
             return round(float(value), 1)
@@ -105,20 +140,43 @@ class NEDEnergySensor(CoordinatorEntity[NEDEnergyDataUpdateCoordinator], SensorE
         if not sensor_data:
             return None
 
-        latest = sensor_data[0]
+        # Gebruik dezelfde logica om het huidige record te vinden
+        now = datetime.now()
+        current_record = None
+        
+        for record in sensor_data:
+            timestamp_str = record.get("timestamp")
+            if timestamp_str:
+                try:
+                    ts_clean = timestamp_str.replace('Z', '+00:00')
+                    record_time = datetime.fromisoformat(ts_clean)
+                    
+                    if now.tzinfo is None and record_time.tzinfo is not None:
+                        record_time = record_time.replace(tzinfo=None)
+                    
+                    if record_time <= now:
+                        current_record = record
+                    else:
+                        break
+                except (ValueError, AttributeError):
+                    continue
+        
+        if current_record is None:
+            current_record = sensor_data[0]
 
         attributes = {
-            "last_updated": latest.get("timestamp"),
-            "percentage": latest.get("percentage"),
-            "api_last_update": latest.get("last_update"),
+            "last_updated": current_record.get("timestamp"),
+            "percentage": current_record.get("percentage"),
+            "api_last_update": current_record.get("last_update"),
         }
+        
         import logging
         _LOGGER = logging.getLogger(__name__)
-        _LOGGER.warning(f"Total records available for {self._key}: {len(sensor_data)}")
+        _LOGGER.debug(f"Total records available for {self._key}: {len(sensor_data)}")
 
-        # Add forecast
+        # Add forecast - alle toekomstige waarden
         forecast_list = []
-        for record in sensor_data:  # All available hours
+        for record in sensor_data:
             forecast_list.append(
                 {
                     "datetime": record.get("timestamp"),
