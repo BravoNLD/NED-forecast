@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
+import logging
 
 from homeassistant.components.sensor import (
     SensorEntity,
@@ -18,6 +19,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, SENSOR_TYPES
 from .coordinator import NEDEnergyDataUpdateCoordinator
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -72,6 +75,7 @@ class NEDEnergySensor(CoordinatorEntity[NEDEnergyDataUpdateCoordinator], SensorE
         super().__init__(coordinator)
         self.entity_description = description
         self._key = key
+        self.sensor_type = key  # ✅ GEFIXED: sensor_type toevoegen
         self._attr_unique_id = f"ned_energy_forecast_{key}"
 
     @property
@@ -91,9 +95,6 @@ class NEDEnergySensor(CoordinatorEntity[NEDEnergyDataUpdateCoordinator], SensorE
             return None
 
         # Vind het record dat het dichtst bij het huidige moment ligt
-        import logging
-        _LOGGER = logging.getLogger(__name__)
-        
         now = datetime.now()
         
         # Zoek naar het meest recente record dat niet in de toekomst ligt
@@ -124,8 +125,11 @@ class NEDEnergySensor(CoordinatorEntity[NEDEnergyDataUpdateCoordinator], SensorE
         # Als we geen huidig record vonden, neem het eerste record
         if current_record is None:
             _LOGGER.debug(f"No current record found for {self._key}, using first record")
-            current_record = sensor_data[0]
+            current_record = sensor_data[0] if sensor_data else None
         
+        if current_record is None:
+            return None
+            
         value = current_record.get("capacity")
 
         if isinstance(value, (int, float)):
