@@ -2,7 +2,7 @@
 
 2026-01 Vanwege onvoorziene omstandigheden in de persoonlijke situatie kan ik de komende periode geen tijd en energie in dit project steken.
 De onderstaande beschrijving is nog niet aangepast op de laatste versie (1.3.1) waar een zelfcalibrerend algoritme in is opgenomen. De functionaliteit hiervan heb ik nog niet goed kunnen testen.
-Wil je de versie gebruiken die past bij onderstaande readme, download dan versie 1.1.3 (of 1.1.4 ?)
+Wil je de versie gebruiken die past bij onderstaande readme, download dan versie 1.1.5 (of 1.1.6 ?), zie discussie in Issues.
 
 
 # ⚡ NED Energy Forecast voor Home Assistant
