@@ -25,7 +25,7 @@ from .const import (
     GRANULARITY_TIMEZONE_CET,
     SENSOR_TYPES,
     DEFAULT_SCAN_INTERVAL,
-    SOLAR_NOT_IN_CONSUMPTION_GW,
+    SOLAR_ON_GRID_FRACTION,
     REFIT_TIME,
     ROLLING_WINDOW_DAYS,
     MIN_DATAPOINTS,
@@ -104,7 +104,7 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                     ts = data["wind_onshore"][0]["timestamp"]
 
                     # Calculate totals
-                    solar_on_grid = solar_val * SOLAR_NOT_IN_CONSUMPTION_GW
+                    solar_on_grid = solar_val * SOLAR_ON_GRID_FRACTION
                     total_renewable = wind_on + wind_off + solar_on_grid
                     coverage_pct = (total_renewable / consumption * 100) if consumption > 0 else 0.0
 
@@ -234,17 +234,14 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
             for timestamp, values in sorted(combined.items()):
                 if all(k in values for k in ["wind_onshore", "wind_offshore", "solar", "consumption"]):
                     # Bereken features
-                    solar_on_grid = values["solar"] * SOLAR_NOT_IN_CONSUMPTION_GW
-                    total_renewable = values["wind_onshore"] + values["wind_offshore"] + solar_on_grid
-                    net_demand = values["consumption"] - total_renewable
+                    solar_on_grid = values["solar"] * SOLAR_ON_GRID_FRACTION
                     
-                    # Feature vector: [consumption, wind_on, wind_off, solar, net_demand]
+                    # Feature vector: [consumption, wind_on, wind_off, solar_on_grid]
                     X = [[
                         values["consumption"],
                         values["wind_onshore"],
                         values["wind_offshore"],
-                        values["solar"],
-                        net_demand
+                        solar_on_grid
                     ]]
                     
                     # Voorspel prijs
@@ -311,7 +308,6 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
 
             for timestamp, values in sorted(combined.items()):
                 if all(k in values for k in ["wind_onshore", "wind_offshore", "solar", "consumption"]):
-                    solar_on_grid = values["solar"] * SOLAR_NOT_IN_CONSUMPTION_GW
                     total_renewable = values["wind_onshore"] + values["wind_offshore"] + solar_on_grid
                     restlast_gw = values["consumption"] - total_renewable
                     
@@ -346,13 +342,13 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
             if not self.price_sensor:
                 _LOGGER.info("Price sensor niet ingesteld, model fit overgeslagen")
                 return
-            
-            _LOGGER.info("Start Linear Regression model fit...")
         
+            _LOGGER.info("Start Linear Regression model fit...")
+    
             # Haal 30 dagen historische data op uit recorder
             end_time = dt_util.now()
             start_time = end_time - timedelta(days=ROLLING_WINDOW_DAYS)
-        
+    
             # Entity IDs van onze eigen sensoren
             entity_ids = [
                 "sensor.ned_forecast_consumption",
@@ -361,10 +357,10 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                 "sensor.ned_forecast_solar",
                 self.price_sensor,  # User-configured prijssensor
             ]
-        
+    
             # Verzamel alle data per entity
             historical_records: dict[str, list] = {}
-        
+    
             for entity_id in entity_ids:
                 entity_history = await get_instance(self.hass).async_add_executor_job(
                     history.state_changes_during_period,
@@ -376,102 +372,212 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                     True,
                     None
                 )
-            
+        
                 if entity_id in entity_history:
                     historical_records[entity_id] = entity_history[entity_id]
                     _LOGGER.debug(f"Opgehaald {len(entity_history[entity_id])} records voor {entity_id}")
                 else:
                     _LOGGER.warning(f"Geen history gevonden voor {entity_id}")
                     historical_records[entity_id] = []
+    
+            # ========== HOURLY BUCKETING ==========
+            def bucket_states_by_hour(states: list) -> dict[datetime, float]:
+                """Bucket states naar hele uren, return dict {hour: avg_value}."""
+                hour_buckets: dict[datetime, list[float]] = {}
+            
+                for state in states:
+                    try:
+                        # Align timestamp naar hele uur (floor)
+                        hour = state.last_updated.replace(minute=0, second=0, microsecond=0)
+                        value = float(state.state)
+                    
+                        if hour not in hour_buckets:
+                            hour_buckets[hour] = []
+                        hour_buckets[hour].append(value)
+                    
+                    except (ValueError, TypeError, AttributeError):
+                        continue
+            
+                # Average per uur (als er meerdere records in 1 uur zijn)
+                return {
+                    hour: sum(values) / len(values)
+                    for hour, values in hour_buckets.items()
+                }
         
-            # Bouw feature matrix X en target vector y
+            # Bucket alle entities naar uren
+            consumption_hourly = bucket_states_by_hour(
+                historical_records.get("sensor.ned_forecast_consumption", [])
+            )
+            wind_on_hourly = bucket_states_by_hour(
+                historical_records.get("sensor.ned_forecast_wind_onshore", [])
+            )
+            wind_off_hourly = bucket_states_by_hour(
+                historical_records.get("sensor.ned_forecast_wind_offshore", [])
+            )
+            solar_hourly = bucket_states_by_hour(
+                historical_records.get("sensor.ned_forecast_solar", [])
+            )
+            price_hourly = bucket_states_by_hour(
+                historical_records.get(self.price_sensor, [])
+            )
+        
+            # Debug: toon bucketed counts
+            _LOGGER.debug(
+                "Hourly bucketing: consumption=%d, wind_on=%d, wind_off=%d, solar=%d, price=%d uren",
+                len(consumption_hourly),
+                len(wind_on_hourly),
+                len(wind_off_hourly),
+                len(solar_hourly),
+                len(price_hourly),
+            )
+        
+            # ========== MATCHING + SOLAR=0 IMPUTATION ==========
             X_list = []
             y_list = []
         
-            # Parse consumption als baseline timestamps
-            consumption_entity = "sensor.ned_forecast_consumption"
-            if consumption_entity not in historical_records or not historical_records[consumption_entity]:
-                _LOGGER.error("Geen consumption history gevonden, kan model niet fitten")
-                return
+            # ⭐ FIX 1: Tracking variabelen VOOR de loop initialiseren
+            solar_real_count = 0
+            solar_imputed_count = 0
         
-            # Maak dict voor snelle lookup
-            wind_on_dict = {state.last_updated: state for state in historical_records.get("sensor.ned_forecast_wind_onshore", [])}
-            wind_off_dict = {state.last_updated: state for state in historical_records.get("sensor.ned_forecast_wind_offshore", [])}
-            solar_dict = {state.last_updated: state for state in historical_records.get("sensor.ned_forecast_solar", [])}
-            price_dict = {state.last_updated: state for state in historical_records.get(self.price_sensor, [])}
+            # ⭐ FIX 2: Skip_reasons zonder solar keys (solar wordt geïmputeerd)
+            skip_reasons = {
+                "missing_wind_on": 0,
+                "missing_wind_off": 0,
+                "missing_price": 0,
+            }
         
-            for cons_state in historical_records[consumption_entity]:
+            total_consumption_hours = len(consumption_hourly)
+            matched_hours = 0
+        
+            # Itereer over alle consumption uren (baseline)
+            for hour, consumption in sorted(consumption_hourly.items()):
+                # Probeer alle features te vinden voor dit uur
+                wind_on = wind_on_hourly.get(hour)
+                wind_off = wind_off_hourly.get(hour)
+                solar = solar_hourly.get(hour)
+                price = price_hourly.get(hour)
+            
+                # ⭐ SOLAR IMPUTATION: Als solar missing, behandel als 0.0 (nacht)
+                if solar is None:
+                    solar = 0.0
+                    solar_imputed_count += 1
+                else:
+                    solar_real_count += 1
+            
+                # Wind en price zijn nog steeds skip-redenen
+                if wind_on is None:
+                    skip_reasons["missing_wind_on"] += 1
+                if wind_off is None:
+                    skip_reasons["missing_wind_off"] += 1
+                if price is None:
+                    skip_reasons["missing_price"] += 1
+            
+                # ⭐ FIX 3: Skip alleen als wind OF price ontbreekt (solar is nu altijd gevuld)
+                if None in [wind_on, wind_off, price]:
+                    continue
+                
+                # Alle features aanwezig: bereken net_demand en voeg toe
                 try:
-                    ts = cons_state.last_updated
+                    solar_on_grid = solar * SOLAR_ON_GRID_FRACTION
                 
-                    # Probeer waarden te vinden binnen 5 minuten van timestamp
-                    consumption = float(cons_state.state)
+                    # Feature vector: [consumption, wind_on, wind_off, solar, net_demand]
+                    X_list.append([consumption, wind_on, wind_off, solar_on_grid])
+                    y_list.append(price)
                 
-                    # Zoek matching states (binnen 5 min)
-                    wind_on_val = self._find_closest_state(wind_on_dict, ts, timedelta(minutes=5))
-                    wind_off_val = self._find_closest_state(wind_off_dict, ts, timedelta(minutes=5))
-                    solar_val = self._find_closest_state(solar_dict, ts, timedelta(minutes=5))
-                    price_val = self._find_closest_state(price_dict, ts, timedelta(minutes=5))
+                    matched_hours += 1
                 
-                    if None in [wind_on_val, wind_off_val, solar_val, price_val]:
-                        continue
-                
-                    # Bereken net_demand
-                    solar_on_grid = solar_val * SOLAR_NOT_IN_CONSUMPTION_GW
-                    total_renewable = wind_on_val + wind_off_val + solar_on_grid
-                    net_demand = consumption - total_renewable
-                
-                    # Feature vector
-                    X_list.append([consumption, wind_on_val, wind_off_val, solar_val, net_demand])
-                    y_list.append(price_val)
-                
-                except (ValueError, TypeError, AttributeError):
+                except (ValueError, TypeError):
                     continue
         
+            # ========== DEBUG METRICS ==========
+            # Coverage per feature (% van consumption uren waar feature aanwezig is)
+            coverage_wind_on = (
+                (total_consumption_hours - skip_reasons["missing_wind_on"]) 
+                / total_consumption_hours * 100
+            ) if total_consumption_hours > 0 else 0
+        
+            coverage_wind_off = (
+                (total_consumption_hours - skip_reasons["missing_wind_off"]) 
+                / total_consumption_hours * 100
+            ) if total_consumption_hours > 0 else 0
+        
+            # ⭐ FIX 4: Solar coverage met real vs imputed breakdown
+            coverage_solar_total = 100.0  # Altijd 100% (real + imputed)
+            coverage_solar_real = (
+                solar_real_count / total_consumption_hours * 100
+            ) if total_consumption_hours > 0 else 0
+        
+            coverage_price = (
+                (total_consumption_hours - skip_reasons["missing_price"]) 
+                / total_consumption_hours * 100
+            ) if total_consumption_hours > 0 else 0
+        
+            _LOGGER.info(
+                "Feature coverage: wind_on=%.1f%%, wind_off=%.1f%%, "
+                "solar=%.1f%% (%d real + %d imputed=0), price=%.1f%%",
+                coverage_wind_on,
+                coverage_wind_off,
+                coverage_solar_total,
+                solar_real_count,
+                solar_imputed_count,
+                coverage_price,
+            )
+        
+            # ⭐ FIX 5: Expliciet log solar imputation
+            if solar_imputed_count > 0:
+                _LOGGER.info(
+                    "🌙 Imputed solar=0.0 for %d hours (%.1f%%, likely night periods)",
+                    solar_imputed_count,
+                    (solar_imputed_count / total_consumption_hours * 100) if total_consumption_hours > 0 else 0
+                )
+        
+            _LOGGER.debug(
+                "Skip reasons: wind_on=%d, wind_off=%d, price=%d (van %d uren)",
+                skip_reasons["missing_wind_on"],
+                skip_reasons["missing_wind_off"],
+                skip_reasons["missing_price"],
+                total_consumption_hours,
+            )
+        
+            # ========== MODEL FIT ==========
             if len(X_list) < MIN_DATAPOINTS:
                 _LOGGER.warning(
                     f"Niet genoeg datapunten voor fit: {len(X_list)} < {MIN_DATAPOINTS}. Model niet gefit."
                 )
+            
+                # ⭐ AANGEPASTE TIP: Solar is nu geen bottleneck meer
+                if skip_reasons["missing_wind_on"] > total_consumption_hours * 0.3:
+                    _LOGGER.info("TIP: Wind onshore coverage is laag. Check sensor configuratie.")
+                elif skip_reasons["missing_wind_off"] > total_consumption_hours * 0.3:
+                    _LOGGER.info("TIP: Wind offshore coverage is laag. Check sensor configuratie.")
+                elif skip_reasons["missing_price"] > total_consumption_hours * 0.3:
+                    _LOGGER.info("TIP: Price sensor coverage is laag. Check sensor configuratie.")
+                else:
+                    _LOGGER.info("TIP: Overweeg langere history periode (verhoog ROLLING_WINDOW_DAYS).")
+            
                 return
-        
+    
             # Fit model met eigen LinearRegression implementatie
             self.lr_model = LinearRegression()
             self.lr_model.fit(X_list, y_list)
             self.last_fit_time = datetime.now()
-        
+    
             # ✅ R² score berekenen en opslaan
             self.model_r2_score = self.lr_model.score(X_list, y_list)
             self.model_datapoints = len(X_list)
-        
+    
             _LOGGER.info(
-                f"✅ Linear Regression model gefit op {len(X_list)} datapunten. R² score: {self.model_r2_score:.4f}"
+                f"✅ Linear Regression model gefit op {len(X_list)} datapunten "
+                f"(matched {matched_hours}/{total_consumption_hours} uren = {matched_hours/total_consumption_hours*100:.1f}%). "
+                f"R² score: {self.model_r2_score:.4f}"
             )
             _LOGGER.debug(f"Coëfficiënten: {self.lr_model.coefficients}, Intercept: {self.lr_model.intercept}")
-        
+    
         except Exception as err:
             _LOGGER.error(f"Fout bij fitten LR model: {err}", exc_info=True)
             self.lr_model = None
             self.model_r2_score = None
             self.model_datapoints = None
-
-    def _find_closest_state(self, state_dict: dict, target_time: datetime, max_delta: timedelta) -> float | None:
-        """Vind de dichtstbijzijnde state binnen max_delta."""
-        closest_state = None
-        closest_delta = max_delta
-        
-        for ts, state in state_dict.items():
-            delta = abs(ts - target_time)
-            if delta < closest_delta:
-                closest_delta = delta
-                closest_state = state
-        
-        if closest_state is None:
-            return None
-        
-        try:
-            return float(closest_state.state)
-        except (ValueError, TypeError):
-            return None
 
     async def _fetch_sensor_data(self, type_id: int, activity: int) -> list[dict]:
         """Fetch data for a specific sensor from the API."""
