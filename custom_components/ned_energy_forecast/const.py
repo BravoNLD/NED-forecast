@@ -34,7 +34,7 @@ GRANULARITY_HOURLY = 5
 GRANULARITY_TIMEZONE_CET = 1
 
 # ⚡ Eerste 100-XX% GW solar zit niet in consumption data, 45% zelfverbruik lijkt het beste te passen.
-SOLAR_NOT_IN_CONSUMPTION_GW = 0.55
+SOLAR_ON_GRID_FRACTION = 0.55
 
 # Sensor definitions
 SENSOR_TYPES = {
