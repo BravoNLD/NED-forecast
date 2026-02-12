@@ -7,7 +7,7 @@ De integratie werkt, maar documentatie en featureontwikkeling kunnen achterlopen
 
 ---
 
-## 🧠 Over v1.3.1 (laatste updates)
+## 🧠 Over v1.3.1+ (laatste updates)
 
 - In v1.3.1 is een **zelfcalibrerend algoritme** toegevoegd. Deze functionaliteit is nog niet uitgebreid getest in alle situaties.
 - De integratie gebruikt voor (optionele) prijs-forecast functionaliteit de Home Assistant **recorder/history** data.  
