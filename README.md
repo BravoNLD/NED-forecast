@@ -1,10 +1,23 @@
-# !! Update !!
+## 🔔 Projectstatus / onderhoud
 
-2026-01 Vanwege onvoorziene omstandigheden in de persoonlijke situatie kan ik de komende periode geen tijd en energie in dit project steken.
-De onderstaande beschrijving is nog niet aangepast op de laatste versie (1.3.1) waar een zelfcalibrerend algoritme in is opgenomen. De functionaliteit hiervan heb ik nog niet goed kunnen testen.
-Wil je de versie gebruiken die past bij onderstaande readme, download dan versie 1.1.5 (of 1.1.6 ?), zie discussie in Issues.
+2026-01: Door persoonlijke omstandigheden is mijn beschikbare tijd beperkt.  
+De integratie werkt, maar documentatie en featureontwikkeling kunnen achterlopen. PR’s en issue reports zijn welkom.
 
+> Let op: de README kan op onderdelen nog afwijken van de actuele implementatie (v1.3.1+).
 
+---
+
+## 🧠 Over v1.3.1 (laatste updates)
+
+- In v1.3.1 is een **zelfcalibrerend algoritme** toegevoegd. Deze functionaliteit is nog niet uitgebreid getest in alle situaties.
+- De integratie gebruikt voor (optionele) prijs-forecast functionaliteit de Home Assistant **recorder/history** data.  
+  Daarom bevat `manifest.json` nu:
+  - `after_dependencies: ["recorder"]`  
+  Dit zorgt voor correcte laadvolgorde tijdens validatie en opstart.
+
+Wil je een oudere versie gebruiken die exact aansluit op de oudere README-omschrijving, pak dan een oudere release (v1.1.6).
+
+---
 # ⚡ NED Energy Forecast voor Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
@@ -41,8 +54,9 @@ Home Assistant integratie voor real-time duurzame energievoorspellingen in Neder
 1. **Installeer via HACS** → Voeg custom repository toe
 2. **API Key ophalen** bij [NED.nl](https://ned.nl/nl/user/register)
 3. **Configureer integratie** via Settings → Integrations
-4. **Kopieer ApexCharts config** (zie hieronder)
-5. **Klaar!** 🎉
+4. **Optioneel** Refereer je epex prijs sensor, zodat hij de forecast daarop kan baseren
+5. **Kopieer ApexCharts config** (zie hieronder)
+6. **Klaar!** 🎉
 
 ---
 
@@ -84,7 +98,8 @@ Home Assistant integratie voor real-time duurzame energievoorspellingen in Neder
 2. Klik op **+ Add Integration**
 3. Zoek naar **"NED Energy Forecast"**
 4. Plak je API key
-5. Klik op **Submit**
+5. Optioneel: Voeg je EPEX prijs sensor toe
+6. Klik op **Submit**
 
 De sensoren worden nu automatisch aangemaakt en elk uur geüpdatet.
 
