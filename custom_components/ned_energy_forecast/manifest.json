@@ -1,6 +1,7 @@
 {
   "domain": "ned_energy_forecast",
   "name": "NED Energy Forecast",
+  "after_dependencies": ["recorder"],
   "codeowners": ["@BravoNLD"],
   "config_flow": true,
   "dependencies": [],
