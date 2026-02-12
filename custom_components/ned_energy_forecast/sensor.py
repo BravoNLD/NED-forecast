@@ -40,7 +40,7 @@ async def async_setup_entry(
 
     for key, info in SENSOR_TYPES.items():
         # Set device class for MW sensors
-        device_class = SensorDeviceClass.POWER if info.get("unit") == "MW" else None
+        device_class = None  # MW unit, geen device_class om statistics te ondersteunen
 
         entities.append(
             NEDEnergySensor(
@@ -135,7 +135,9 @@ class NEDEnergySensor(CoordinatorEntity[NEDEnergyDataUpdateCoordinator], SensorE
         if isinstance(value, (int, float)):
             return round(float(value), 1)
 
-        return None
+        # Fallback naar 0 i.p.v. None voor statistics compatibility
+        _LOGGER.debug(f"No valid capacity for {self._key}, returning 0")
+        return 0.0
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
