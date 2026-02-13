@@ -3,6 +3,8 @@
 ## 🧠 Over v1.3.3+ (laatste updates)
 
 - Vanaf v1.3.1 is een **zelfcalibrerend algoritme** toegevoegd. Deze functionaliteit is nog niet uitgebreid getest in alle situaties.
+  Door lineaire regressie wordt een fit gemaakt volgens de formule:
+  `prijs = consumption - (wind_onshore + wind_offshore + solar_on_grid)`
 - De integratie gebruikt voor (optionele) prijs-forecast functionaliteit de Home Assistant **recorder/history** data.  
   Daarom bevat `manifest.json` nu:
   - `after_dependencies: ["recorder"]`  
@@ -36,7 +38,6 @@ Home Assistant integratie voor real-time duurzame energievoorspellingen in Neder
 | 🌬️ **Wind (land + zee)** | Productievoorspelling windenergie |
 | ☀️ **Zonne-energie** | Productievoorspelling zonenergie |
 | ⚡ **Totaalverbruik** | Nederlandse elektriciteitsverbruik per uur |
-| 🌱 **Duurzaam aandeel** | Dekkingspercentage hernieuwbare energie (%) |
 | 💰 **EPEX prijzen verwachting** | Day-ahead spotprijzen verwachting (ct/kWh) |
 | 📈 **144u forecast** | Tot 6 dagen vooruit kijken |
 | 🔄 **Auto-refresh** | Data wordt elk uur automatisch geüpdatet |
