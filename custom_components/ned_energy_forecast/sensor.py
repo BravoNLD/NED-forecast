@@ -168,11 +168,7 @@ class NEDEnergySensor(CoordinatorEntity[NEDEnergyDataUpdateCoordinator], SensorE
                 attributes["model_intercept"] = round(self.coordinator.lr_model.intercept, 4)
                 attributes["model_coefficients"] = [round(c, 4) for c in self.coordinator.lr_model.coefficients]
                 attributes["feature_names"] = [
-                    "consumption_gw",
-                    "wind_onshore_gw", 
-                    "wind_offshore_gw",
-                    "solar_gw",
-                    "net_demand_gw"
+                    "residual_gw"
                 ]
         
             return attributes

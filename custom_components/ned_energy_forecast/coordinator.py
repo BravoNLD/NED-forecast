@@ -235,14 +235,11 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                 if all(k in values for k in ["wind_onshore", "wind_offshore", "solar", "consumption"]):
                     # Bereken features
                     solar_on_grid = values["solar"] * SOLAR_ON_GRID_FRACTION
+                    renewables_total = values["wind_onshore"] + values["wind_offshore"] + solar_on_grid
+                    residual = values["consumption"] - renewables_total
                     
                     # Feature vector: [consumption, wind_on, wind_off, solar_on_grid]
-                    X = [[
-                        values["consumption"],
-                        values["wind_onshore"],
-                        values["wind_offshore"],
-                        solar_on_grid
-                    ]]
+                    X = [[residual]]
                     
                     # Voorspel prijs
                     price_predictions = self.lr_model.predict(X)
@@ -479,9 +476,11 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                 # Alle features aanwezig: bereken net_demand en voeg toe
                 try:
                     solar_on_grid = solar * SOLAR_ON_GRID_FRACTION
+                    renewables_total = wind_on + wind_off + solar_on_grid
+                    residual = consumption - renewables_total
                 
                     # Feature vector: [consumption, wind_on, wind_off, solar, net_demand]
-                    X_list.append([consumption, wind_on, wind_off, solar_on_grid])
+                    X_list.append([residual])
                     y_list.append(price)
                 
                     matched_hours += 1
@@ -571,7 +570,7 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                 f"(matched {matched_hours}/{total_consumption_hours} uren = {matched_hours/total_consumption_hours*100:.1f}%). "
                 f"R² score: {self.model_r2_score:.4f}"
             )
-            _LOGGER.debug(f"Coëfficiënten: {self.lr_model.coefficients}, Intercept: {self.lr_model.intercept}")
+            _LOGGER.debug(f"Model: price = {self.lr_model.intercept:.4f} + "f"{self.lr_model.coefficients[0]:.4f} * residual_gw")
     
         except Exception as err:
             _LOGGER.error(f"Fout bij fitten LR model: {err}", exc_info=True)
