@@ -1,19 +1,13 @@
-## 🔔 Projectstatus / onderhoud
 
-2026-01: Door persoonlijke omstandigheden is mijn beschikbare tijd beperkt.  
-De integratie werkt, maar documentatie en featureontwikkeling kunnen achterlopen. PR’s en issue reports zijn welkom.
 
-> Let op: de README kan op onderdelen nog afwijken van de actuele implementatie (v1.3.1+).
+## 🧠 Over v1.3.3+ (laatste updates)
 
----
-
-## 🧠 Over v1.3.1+ (laatste updates)
-
-- In v1.3.1 is een **zelfcalibrerend algoritme** toegevoegd. Deze functionaliteit is nog niet uitgebreid getest in alle situaties.
+- Vanaf v1.3.1 is een **zelfcalibrerend algoritme** toegevoegd. Deze functionaliteit is nog niet uitgebreid getest in alle situaties.
 - De integratie gebruikt voor (optionele) prijs-forecast functionaliteit de Home Assistant **recorder/history** data.  
   Daarom bevat `manifest.json` nu:
   - `after_dependencies: ["recorder"]`  
   Dit zorgt voor correcte laadvolgorde tijdens validatie en opstart.
+- De waarde van de gerefereerde prijs-sensor bepaalt de waarde van de prijs forecast. Is de prijssensor in euro/kWh inclusief Energiebelasting, opslagen en BTW, dan is de prijs-forecast dat ook. Is de prijssensor de kale EPEX prijs in ct/kWh, dan is de prijs-forecast in ct/kWh.
 
 Wil je een oudere versie gebruiken die exact aansluit op de oudere README-omschrijving, pak dan een oudere release (v1.1.6).
 
@@ -46,6 +40,7 @@ Home Assistant integratie voor real-time duurzame energievoorspellingen in Neder
 | 💰 **EPEX prijzen verwachting** | Day-ahead spotprijzen verwachting (ct/kWh) |
 | 📈 **144u forecast** | Tot 6 dagen vooruit kijken |
 | 🔄 **Auto-refresh** | Data wordt elk uur automatisch geüpdatet |
+| .. **Auto-fit** | (Optioneel) Het prijsmodel wordt elke nacht (02:07) gefit op de prijzen van de afgelopen periode
 
 ---
 
@@ -115,7 +110,7 @@ De sensoren worden nu automatisch aangemaakt en elk uur geüpdatet.
 | Totaal duurzaam | `sensor.ned_forecast_total_renewable` | GW | Som wind + zon |
 | Verbruik | `sensor.ned_forecast_consumption` | GW | Landelijk verbruik |
 | Dekkingspercentage | `sensor.ned_forecast_coverage` | % | Duurzame dekking |
-| EPEX prijs (ct/kWh) | `sensor.ned_epex_price_kwh` | ct/kWh | Omgerekend naar kWh |
+| EPEX prijs (prijs/kWh) | `sensor.ned_epex_price_kwh` | prijs/kWh | Eenheid is aFhankelijk van gerefereerde prijssensor (euro of ct) |
 
 Alle sensoren bevatten **forecast attributes** met data tot 144 uur vooruit.
 
