@@ -305,6 +305,7 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
 
             for timestamp, values in sorted(combined.items()):
                 if all(k in values for k in ["wind_onshore", "wind_offshore", "solar", "consumption"]):
+                    solar_on_grid = values["solar"] * SOLAR_ON_GRID_FRACTION
                     total_renewable = values["wind_onshore"] + values["wind_offshore"] + solar_on_grid
                     restlast_gw = values["consumption"] - total_renewable
                     
