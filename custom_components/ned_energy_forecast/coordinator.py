@@ -675,7 +675,8 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                 await self.async_refresh()
         
         # Start task
-        self._cancel_hourly_update = self.hass.async_create_task(_update_at_hour())
+        self._cancel_hourly_update = self.hass.async_create_background_task(_update_at_hour(),
+    name="ned_energy_forecast_hourly_update",)
 
     @callback
     def _schedule_daily_refit(self) -> None:
@@ -705,7 +706,8 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                 await self.async_refresh()
         
         # Start task
-        self._cancel_daily_refit = self.hass.async_create_task(_refit_at_time())
+        self._cancel_daily_refit = self.hass.async_create_background_task(_refit_at_time(),
+    name="ned_energy_forecast_daily_refit",)
 
     async def async_shutdown(self) -> None:
         """Cleanup bij shutdown."""
@@ -714,13 +716,15 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
         if self._cancel_daily_refit:
             self._cancel_daily_refit.cancel()
 
+    def start_background_schedulers(self) -> None:
+        """Start background schedulers AFTER first refresh is complete."""
+        _LOGGER.info("Starting background schedulers...")
+        self._schedule_hourly_update()
+        self._schedule_daily_refit()
+
     async def async_config_entry_first_refresh(self) -> None:
         """First refresh na setup - start schedulers."""
         await super().async_config_entry_first_refresh()
-        
-        # Start schedulers
-        self._schedule_hourly_update()
-        self._schedule_daily_refit()
         
         # ✅ Alleen refit als price sensor is ingesteld
         if self.price_sensor:
