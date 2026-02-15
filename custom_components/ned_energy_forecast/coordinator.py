@@ -664,20 +664,21 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
     @callback
     def _schedule_hourly_update(self) -> None:
         """Schedule update op hele uren (xx:00) via HA time tracker."""
+        
         async def _handle_hourly_update(now: datetime) -> None:
             """Callback voor elk heel uur."""  
             _LOGGER.debug("Hourly update geactiveerd op %s", now)
             await self.async_refresh()
         
-    # Track elk heel uur (minute=0, second=0)
-    self._cancel_hourly_update = async_track_time_change(
-        self.hass,
-        _handle_hourly_update,
-        minute=0,
-        second=0
-    )
+        # Track elk heel uur (minute=0, second=0)
+        self._cancel_hourly_update = async_track_time_change(
+            self.hass,
+            _handle_hourly_update,
+            minute=0,
+            second=0
+        )
 
-    _LOGGER.info("Hourly updates gescheduled op elk heel uur (:00)")
+        _LOGGER.info("Hourly updates gescheduled op elk heel uur (:00)")
 
     @callback
     def _schedule_daily_refit(self) -> None:
@@ -718,6 +719,7 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
         if self._cancel_hourly_update:
             self._cancel_hourly_update()
             _LOGGER.debug("Hourly update listener verwijderd")
+
         if self._cancel_daily_refit:
             self._cancel_daily_refit()
             _LOGGER.debug("Daily refit listener verwijderd")
