@@ -33,7 +33,7 @@ Het machine learning model traint nu **in de achtergrond** tijdens Home Assistan
 
 ## 📸 Voorbeeld
 
-!\[NED Energy Forecast Dashboard](https://github.com/user-attachments/assets/4f5f0550-2da0-40ed-ad9b-f385b36203f6)
+![NED Energy Forecast Dashboard](https://github.com/user-attachments/assets/4f5f0550-2da0-40ed-ad9b-f385b36203f6)
 
 *Real-time dashboard met duurzame energie forecast en EPEX prijsverwachting tot 6 dagen vooruit*
 
