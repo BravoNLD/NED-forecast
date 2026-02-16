@@ -1,17 +1,28 @@
 
 
-## 🧠 Over v1.3.3+ (laatste updates)
+## 🚀 Upgrade naar v1.4.0 (Breaking Change)
 
-- Vanaf v1.3.1 is een **zelfcalibrerend algoritme** toegevoegd. Deze functionaliteit is nog niet uitgebreid getest in alle situaties.
-  Door lineaire regressie wordt een fit gemaakt volgens de formule:
-  `prijs = consumption - (wind_onshore + wind_offshore + solar_on_grid)`
-- De integratie gebruikt voor (optionele) prijs-forecast functionaliteit de Home Assistant **recorder/history** data.  
-  Daarom bevat `manifest.json` nu:
-  - `after_dependencies: ["recorder"]`  
-  Dit zorgt voor correcte laadvolgorde tijdens validatie en opstart.
-- De waarde van de gerefereerde prijs-sensor bepaalt de waarde van de prijs forecast. Is de prijssensor in euro/kWh inclusief Energiebelasting, opslagen en BTW, dan is de prijs-forecast dat ook. Is de prijssensor de kale EPEX prijs in ct/kWh, dan is de prijs-forecast in ct/kWh.
+### Wat is er veranderd?
 
-Wil je een oudere versie gebruiken die exact aansluit op de oudere README-omschrijving, pak dan een oudere release (v1.1.6).
+Prijzen zijn nu in **`€/kWh`** (was: `ct/kWh`). Dit betekent dat waarden 100× kleiner zijn.
+
+### ✅ Check na upgrade
+
+1. **Developer Tools → States**
+   - `sensor.ned_forecast_price_now` moet tussen `0.05` en `0.30` zitten
+   - `unit_of_measurement` moet `€/kWh` zijn
+
+2. **Automations aanpassen**
+   ```yaml
+   # VOOR v3.0:
+   below: 15  # 15 ct/kWh
+   
+   # NA v3.0:
+   below: 0.15  # 0.15 €/kWh (= 15 cent)
+
+3. **Template sensors**
+   - Verwijder eventuele /100 of *100 conversies
+   - De sensor is nu in € 
 
 ---
 # ⚡ NED Energy Forecast voor Home Assistant
@@ -38,7 +49,7 @@ Home Assistant integratie voor real-time duurzame energievoorspellingen in Neder
 | 🌬️ **Wind (land + zee)** | Productievoorspelling windenergie |
 | ☀️ **Zonne-energie** | Productievoorspelling zonenergie |
 | ⚡ **Totaalverbruik** | Nederlandse elektriciteitsverbruik per uur |
-| 💰 **EPEX prijzen verwachting** | Day-ahead spotprijzen verwachting (ct/kWh) |
+| 💰 **EPEX prijzen verwachting** | Day-ahead spotprijzen verwachting (€/kWh) |
 | 📈 **144u forecast** | Tot 6 dagen vooruit kijken |
 | 🔄 **Auto-refresh** | Data wordt elk uur automatisch geüpdatet |
 | .. **Auto-fit** | (Optioneel) Het prijsmodel wordt elke nacht (02:07) gefit op de prijzen van de afgelopen periode
@@ -111,8 +122,7 @@ De sensoren worden nu automatisch aangemaakt en elk uur geüpdatet.
 | Totaal duurzaam | `sensor.ned_forecast_total_renewable` | GW | Som wind + zon |
 | Verbruik | `sensor.ned_forecast_consumption` | GW | Landelijk verbruik |
 | Dekkingspercentage | `sensor.ned_forecast_coverage` | % | Duurzame dekking |
-| EPEX prijs (prijs/kWh) | `sensor.ned_epex_price_kwh` | prijs/kWh | Eenheid is aFhankelijk van gerefereerde prijssensor (euro of ct) |
-
+| EPEX prijs (prijs/kWh) | `sensor.ned_epex_price_kwh` | €/kWh | Prijs voorspelling |
 Alle sensoren bevatten **forecast attributes** met data tot 144 uur vooruit.
 
 ---
@@ -151,13 +161,13 @@ yaxis:
     opposite: true
     decimals: 0
     min: ~0
-    max: ~25
+    max: ~0.25
     apex_config:
       tickAmount: 6
       labels:
         formatter: |
           EVAL:function(value) {
-            return value.toFixed(0) + ' ct/kWh';
+            return value.toFixed(0) + ' €/kWh';
           }
 apex_config:
   chart:
@@ -250,7 +260,7 @@ series:
     type: line
     color: white
     yaxis_id: Price
-    unit: ct/kWh
+    unit: €/kWh
     stroke_width: 3
     opacity: 1
     show:
@@ -282,6 +292,9 @@ A: De data wordt elk uur ververst. Force een update via Developer Tools → Serv
 A:  Controleer of custom:apexcharts-card is geïnstalleerd via HACS
     Wacht ~1 uur tot forecast data is opgehaald
     Check of entity ID's kloppen met jouw installatie
+
+**Q: Mijn prijzen zijn 100x te hoog/laag
+A: Check je automations en template sensors en verwijder conversies van €/kWh naar ct/kWh
 
 ## 🚀 Roadmap
 

@@ -246,8 +246,8 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                     price_predictions = self.lr_model.predict(X)
                     price_prediction = price_predictions[0]
                     
-                    # Begrens tussen -5 en 50 ct/kWh (realistisch bereik)
-                    price_prediction = max(-5.0, min(50.0, price_prediction))
+                    # Begrens tussen -0.10 en 0.80 €/kWh (realistisch bereik)
+                    price_prediction = max(-0.10, min(0.80, price_prediction))
                     
                     epex_forecast.append({
                         "capacity": round(price_prediction, 3),
@@ -259,7 +259,7 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
             if epex_forecast:
                 data["forecast_epex_price"] = epex_forecast
                 _LOGGER.info(
-                    "EPEX LR forecast: %d datapunten, huidige prijs: %.3f ct/kWh (model age: %s)",
+                    "EPEX LR forecast: %d datapunten, huidige prijs: %.4f €/kWh (model age: %s)",
                     len(epex_forecast),
                     epex_forecast[0]["capacity"],
                     (datetime.now() - self.last_fit_time) if self.last_fit_time else "nooit"
@@ -310,7 +310,7 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                     total_renewable = values["wind_onshore"] + values["wind_offshore"] + solar_on_grid
                     restlast_gw = values["consumption"] - total_renewable
                     
-                    epex_price = (1.08 * restlast_gw) + 0.45
+                    epex_price = (0.0108 * restlast_gw) + 0.0045
 
                     epex_forecast.append({
                         "capacity": round(epex_price, 3),
@@ -430,6 +430,24 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                 len(price_hourly),
             )
         
+            # ✅ NIEUW: Auto-detect en converteer naar €/kWh
+            price_sensor_state = self.hass.states.get(self.price_sensor)
+            if price_sensor_state:
+                sensor_unit = price_sensor_state.attributes.get("unit_of_measurement", "ct/kWh")
+    
+                # Normaliseer unit strings
+                is_euro = sensor_unit.lower() in ["€/kwh", "eur/kwh", "euro/kwh"]
+                is_cent = sensor_unit.lower() in ["ct/kwh", "c/kwh", "eurocent/kwh", "cent/kwh"]
+    
+                if is_cent:
+                    # Converteer alle waarden van ct → €
+                    price_hourly = {hour: val / 100.0 for hour, val in price_hourly.items()}
+                    _LOGGER.info(f"Converted {len(price_hourly)} price records from ct/kWh to €/kWh")
+                elif not is_euro:
+                    _LOGGER.warning(f"Unknown price unit '{sensor_unit}', assuming ct/kWh")
+                    price_hourly = {hour: val / 100.0 for hour, val in price_hourly.items()}
+
+
             # ========== MATCHING + SOLAR=0 IMPUTATION ==========
             X_list = []
             y_list = []
