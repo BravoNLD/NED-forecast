@@ -1,10 +1,10 @@
 # ⚡ NED Energy Forecast voor Home Assistant
 
-[!\[hacs\_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
-[!\[GitHub Release](https://img.shields.io/github/release/BravoNLD/NED-forecast.svg)](https://github.com/BravoNLD/NED-forecast/releases)
-[!\[GitHub Issues](https://img.shields.io/github/issues/BravoNLD/NED-forecast)](https://github.com/BravoNLD/NED-forecast/issues)
-[!\[License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[!\[Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/BravoNLD/NED-forecast/graphs/commit-activity)
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![GitHub Release](https://img.shields.io/github/release/BravoNLD/NED-forecast.svg)](https://github.com/BravoNLD/NED-forecast/releases)
+[![GitHub Issues](https://img.shields.io/github/issues/BravoNLD/NED-forecast)](https://github.com/BravoNLD/NED-forecast/issues)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/BravoNLD/NED-forecast/graphs/commit-activity)
 
 **Voorspel duurzame energie én EPEX spotprijzen in Nederland — tot 144 uur vooruit, direct in Home Assistant.**
 
@@ -322,7 +322,8 @@ Dit project is gelicenseerd onder de MIT License – zie het LICENSE bestand voo
 
 ## 🙏 Credits
 
-Data bron
+    Data-bron: NED.nl 
+[![Datasource](https://ned.nl/themes/custom/nedt/logo.svg)](https://ned.nl/nl)
 Alle energie forecast data is afkomstig van NED (Nationale Energiedata), een initiatief voor open energiedata in Nederland.
 
 Ontwikkeling
