@@ -191,13 +191,12 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
             
             # Fit model dagelijks om 02:07 (of bij eerste run)
             if self.lr_model is None or self._should_refit():
-##                await self._fit_lr_model()
-            # Probeer fit te starten. Als er al een fit loopt, gebruik fallback.
-            started = self._ensure_fit_scheduled(reason="forecast_request")
-            if started:
-                _LOGGER.debug("Model fit scheduled (reason=forecast_request)")
+                # Probeer fit te starten. Als er al een fit loopt, gebruik fallback.
+                started = self._ensure_fit_scheduled(reason="forecast_request")
+                if started:
+                    _LOGGER.debug("Model fit scheduled (reason=forecast_request)")
 
-            # Als model nog neit beschikbaar is, val terug op fallback
+            # Als model nog niet beschikbaar is, val terug op fallback
             if self.lr_model is None:
                 _LOGGER.warning(
                     "LR model (nog) niet beschikbaar tijdens opstarten, gebruik fallback formule"
