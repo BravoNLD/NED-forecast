@@ -12,7 +12,7 @@ Deze integratie haalt real-time productievoorspellingen op voor wind- en zonne-e
 
 ---
 
-## 🆕 Wat is er nieuw in v1.4.3?
+## 🆕 Wat is er nieuw in v1.4.1?
 
 ### ⚡ Supersnel opstarten (85-95% sneller)
 
@@ -327,9 +327,12 @@ Dit project is gelicenseerd onder de MIT License – zie het LICENSE bestand voo
 Alle energie forecast data is afkomstig van NED (Nationale Energiedata), een initiatief voor open energiedata in Nederland.
 
 Ontwikkeling
+
 Maintainer: @BravoNLD
+
 Contributors: See all contributors
 Community
+
 Dank aan:
 
 De Tweakers.net community voor vroege testing
