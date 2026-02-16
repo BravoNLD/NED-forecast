@@ -134,7 +134,7 @@ class NEDEnergySensor(CoordinatorEntity[NEDEnergyDataUpdateCoordinator], SensorE
 
         if isinstance(value, (int, float)):
             if self._key == "forecast_epex_price":
-                return round(float(value, 4)
+                return round(float(value), 4)
             return round(float(value), 1)
 
         # Fallback naar 0 i.p.v. None voor statistics compatibility
