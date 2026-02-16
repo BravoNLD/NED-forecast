@@ -12,7 +12,7 @@ Deze integratie haalt real-time productievoorspellingen op voor wind- en zonne-e
 
 ---
 
-## 🆕 Wat is er nieuw in v1.5.0?
+## 🆕 Wat is er nieuw in v1.4.3?
 
 ### ⚡ Supersnel opstarten (85-95% sneller)
 
@@ -25,9 +25,9 @@ Het machine learning model traint nu **in de achtergrond** tijdens Home Assistan
 * ⏱️ **Tijdelijk eenvoudigere forecast** - De eerste ~10-30 seconden gebruikt een fallback-formule
 * 🔄 **Automatische switch** - Zodra het ML-model klaar is, schakelt de forecast automatisch over
 
-> \*\*Let op:\*\* Direct na restart kan `forecast\_epex\_price` kort gebaseerd zijn op een eenvoudigere berekening. Dit is normaal en lost zichzelf op binnen ~30 seconden.
+> \*\*Let op:\*\* Direct na restart kan `forecast_epex_price` kort gebaseerd zijn op een eenvoudigere berekening. Dit is normaal en lost zichzelf op binnen ~30 seconden.
 
-**Technisch:** Model fitting gebeurt nu via `hass.async\_create\_task` met proper concurrency guards en cleanup bij reload/shutdown. Geen breaking changes in configuratie.
+**Technisch:** Model fitting gebeurt nu via `hass.async_create_task` met proper concurrency guards en cleanup bij reload/shutdown. Geen breaking changes in configuratie.
 
 ---
 
@@ -137,27 +137,26 @@ Alle sensoren hebben een **huidige waarde** (state) en **forecast attributen** m
 
 |Entity ID|Eenheid|Beschrijving|
 |-|-|-|
-|`sensor.ned\_forecast\_wind\_onshore`|GW|Windproductie op land|
-|`sensor.ned\_forecast\_wind\_offshore`|GW|Windproductie op zee (offshore windparken)|
-|`sensor.ned\_forecast\_solar`|GW|Totale zonneproductie Nederland|
-|`sensor.ned\_forecast\_total\_renewable`|GW|Som van wind + zon|
-|`sensor.ned\_forecast\_consumption`|GW|Landelijk elektriciteitsverbruik|
-|`sensor.forecast\_epex\_price`|€/kWh|EPEX spotprijs voorspelling (alleen als price sensor geconfigureerd)|
-|`sensor.model\_r2\_score`|-|R² score van het ML model|
+|`sensor.ned_forecast_wind_onshore`|GW|Windproductie op land|
+|`sensor.ned_forecast_wind_offshore`|GW|Windproductie op zee (offshore windparken)|
+|`sensor.ned_forecast_solar`|GW|Totale zonneproductie Nederland|
+|`sensor.ned_forecast_consumption`|GW|Landelijk elektriciteitsverbruik|
+|`sensor.forecast_epex_price`|€/kWh|EPEX spotprijs voorspelling (alleen als price sensor geconfigureerd)|
+|`sensor.model_r2_score`|-|R² score van het ML model|
 
-\*\* 📈 ApexCharts dashboard
+** 📈 ApexCharts dashboard
 Kopieer deze configuratie voor een professionele gestapelde grafiek met prijzen:
 
 ``` yaml
 type: custom:apexcharts-card
-graph\_span: 144h
+graph_span: 144h
 span:
   start: day
 header:
   show: true
   title: EPEX prijs en duurzame energie forecast
-  show\_states: false
-  colorize\_states: true
+  show_states: false
+  colorize_states: true
 now:
   show: true
   label: Nu
@@ -165,8 +164,8 @@ now:
 yaxis:
   - id: Volume
     decimals: 0
-    align\_to: 1
-    apex\_config:
+    align_to: 1
+    apex_config:
       tickAmount: 6
       labels:
         formatter: |
@@ -178,14 +177,14 @@ yaxis:
     decimals: 2
     min: ~0
     max: ~0.30
-    apex\_config:
+    apex_config:
       tickAmount: 6
       labels:
         formatter: |
           EVAL:function(value) {
             return '€' + value.toFixed(2);
           }
-apex\_config:
+apex_config:
   chart:
     height: 400px
   grid:
@@ -210,77 +209,77 @@ apex\_config:
     position: bottom
     horizontalAlign: center
 series:
-  - entity: sensor.ned\_forecast\_wind\_onshore
+  - entity: sensor.ned_forecast_wind_onshore
     name: Wind op land
     type: area
-    yaxis\_id: Volume
+    yaxis_id: Volume
     color: "#0EA5E9"
-    group\_by:
+    group_by:
       func: last
       duration: 1h
     show:
-      legend\_value: false
-    data\_generator: |
+      legend_value: false
+    data_generator: |
       return entity.attributes.forecast.map((entry) => {
-        return \[new Date(entry.datetime).getTime(), entry.value];
+        return [new Date(entry.datetime).getTime(), entry.value];
       });
-  - entity: sensor.ned\_forecast\_wind\_offshore
+  - entity: sensor.ned_forecast_wind_offshore
     name: Wind op zee
     type: area
     color: "#14B8A6"
-    yaxis\_id: Volume
-    group\_by:
+    yaxis_id: Volume
+    group_by:
       func: last
       duration: 1h
     show:
-      legend\_value: false
-    data\_generator: |
+      legend_value: false
+    data_generator: |
       return entity.attributes.forecast.map((entry) => {
-        return \[new Date(entry.datetime).getTime(), entry.value];
+        return [new Date(entry.datetime).getTime(), entry.value];
       });
-  - entity: sensor.ned\_forecast\_solar
+  - entity: sensor.ned_forecast_solar
     name: Zon
     type: area
     color: "#FBBF24"
-    yaxis\_id: Volume
-    group\_by:
+    yaxis_id: Volume
+    group_by:
       func: last
       duration: 1h
     show:
-      legend\_value: false
-    data\_generator: |
+      legend_value: false
+    data_generator: |
       return entity.attributes.forecast.map((entry) => {
-        return \[new Date(entry.datetime).getTime(), entry.value];
+        return [new Date(entry.datetime).getTime(), entry.value];
       });
-  - entity: sensor.ned\_forecast\_consumption
+  - entity: sensor.ned_forecast_consumption
     name: Verbruik
     type: line
     color: "#EF4444"
-    yaxis\_id: Volume
-    stroke\_width: 3
-    group\_by:
+    yaxis_id: Volume
+    stroke_width: 3
+    group_by:
       func: last
       duration: 1h
     show:
-      legend\_value: false
-    data\_generator: |
+      legend_value: false
+    data_generator: |
       return entity.attributes.forecast.map((entry) => {
-        return \[new Date(entry.datetime).getTime(), entry.value];
+        return [new Date(entry.datetime).getTime(), entry.value];
       });
-  - entity: sensor.forecast\_epex\_price
+  - entity: sensor.forecast_epex_price
     name: EPEX prijs
     type: line
     color: "#8B5CF6"
-    yaxis\_id: Price
-    stroke\_width: 3
-    group\_by:
+    yaxis_id: Price
+    stroke_width: 3
+    group_by:
       func: last
       duration: 1h
     show:
-      legend\_value: false
-    data\_generator: |
+      legend_value: false
+    data_generator: |
       return entity.attributes.forecast.map((entry) => {
-        return \[new Date(entry.datetime).getTime(), entry.value];
+        return [new Date(entry.datetime).getTime(), entry.value];
       });
 ```
 
@@ -340,8 +339,11 @@ Alle GitHub contributors en issue reporters
 Vind je deze integratie nuttig?
 
 ⭐ Star deze repository op GitHub
+
 🐛 Meld bugs via issues
+
 💬 Deel je dashboard in de discussions
+
 Gemaakt met ⚡ voor de Nederlandse energietransitie
 
 Documentatie • Issues • Discussions • Releases
