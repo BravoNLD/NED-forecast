@@ -1,68 +1,67 @@
-
-
-## 🚀 Upgrade naar v1.4.0 (Breaking Change)
-
-### Wat is er veranderd?
-
-Prijzen zijn nu in **`€/kWh`** (was: `ct/kWh`). Dit betekent dat waarden 100× kleiner zijn.
-
-### ✅ Check na upgrade
-
-1. **Developer Tools → States**
-   - `sensor.ned_forecast_price_now` moet tussen `0.05` en `0.30` zitten
-   - `unit_of_measurement` moet `€/kWh` zijn
-
-2. **Automations aanpassen**
-   ```yaml
-   # VOOR v3.0:
-   below: 15  # 15 ct/kWh
-   
-   # NA v3.0:
-   below: 0.15  # 0.15 €/kWh (= 15 cent)
-
-3. **Template sensors**
-   - Verwijder eventuele /100 of *100 conversies
-   - De sensor is nu in € 
-
----
 # ⚡ NED Energy Forecast voor Home Assistant
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
-[![GitHub Release](https://img.shields.io/github/release/BravoNLD/NED-forecast.svg)](https://github.com/BravoNLD/NED-forecast/releases)
-[![GitHub Issues](https://img.shields.io/github/issues/BravoNLD/NED-forecast)](https://github.com/BravoNLD/NED-forecast/issues)
+[!\[hacs\_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[!\[GitHub Release](https://img.shields.io/github/release/BravoNLD/NED-forecast.svg)](https://github.com/BravoNLD/NED-forecast/releases)
+[!\[GitHub Issues](https://img.shields.io/github/issues/BravoNLD/NED-forecast)](https://github.com/BravoNLD/NED-forecast/issues)
+[!\[License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[!\[Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/BravoNLD/NED-forecast/graphs/commit-activity)
 
-Home Assistant integratie voor real-time duurzame energievoorspellingen in Nederland. Haal wind-, zon-, en verbruiksdata op tot 144 uur vooruit, en voorspel daarmee EPEX spotprijzen.
+**Voorspel duurzame energie én EPEX spotprijzen in Nederland — tot 144 uur vooruit, direct in Home Assistant.**
+
+Deze integratie haalt real-time productievoorspellingen op voor wind- en zonne-energie, Nederlandse verbruiksdata, én maakt slimme prijsvoorspellingen op basis van jouw eigen EPEX-sensor. Perfect voor automatiseringen die je wasmachine starten als de stroom goedkoop en groen is.
+
+---
+
+## 🆕 Wat is er nieuw in v1.5.0?
+
+### ⚡ Supersnel opstarten (85-95% sneller)
+
+Het machine learning model traint nu **in de achtergrond** tijdens Home Assistant startup. Voorheen moest HA wachten tot het model klaar was (15-40 seconden), nu zijn je sensors binnen 1-3 seconden beschikbaar.
+
+**Wat betekent dit voor jou:**
+
+* ✅ **Snellere HA restart** - Setup completeert direct
+* ✅ **Direct beschikbare sensors** - Geen wachttijd meer
+* ⏱️ **Tijdelijk eenvoudigere forecast** - De eerste ~10-30 seconden gebruikt een fallback-formule
+* 🔄 **Automatische switch** - Zodra het ML-model klaar is, schakelt de forecast automatisch over
+
+> \*\*Let op:\*\* Direct na restart kan `forecast\_epex\_price` kort gebaseerd zijn op een eenvoudigere berekening. Dit is normaal en lost zichzelf op binnen ~30 seconden.
+
+**Technisch:** Model fitting gebeurt nu via `hass.async\_create\_task` met proper concurrency guards en cleanup bij reload/shutdown. Geen breaking changes in configuratie.
 
 ---
 
 ## 📸 Voorbeeld
 
-![NED Energy Forecast Dashboard](https://github.com/user-attachments/assets/4f5f0550-2da0-40ed-ad9b-f385b36203f6)
-*Real-time duurzame energie forecast met EPEX prijzen verwachting*
+!\[NED Energy Forecast Dashboard](https://github.com/user-attachments/assets/4f5f0550-2da0-40ed-ad9b-f385b36203f6)
+
+*Real-time dashboard met duurzame energie forecast en EPEX prijsverwachting tot 6 dagen vooruit*
 
 ---
 
-## ✨ Functies
+## ✨ Features
 
-| Feature | Beschrijving |
-|---------|--------------|
-| 🌬️ **Wind (land + zee)** | Productievoorspelling windenergie |
-| ☀️ **Zonne-energie** | Productievoorspelling zonenergie |
-| ⚡ **Totaalverbruik** | Nederlandse elektriciteitsverbruik per uur |
-| 💰 **EPEX prijzen verwachting** | Day-ahead spotprijzen verwachting (€/kWh) |
-| 📈 **144u forecast** | Tot 6 dagen vooruit kijken |
-| 🔄 **Auto-refresh** | Data wordt elk uur automatisch geüpdatet |
-| .. **Auto-fit** | (Optioneel) Het prijsmodel wordt elke nacht (02:07) gefit op de prijzen van de afgelopen periode
+|Feature|Beschrijving|
+|-|-|
+|🌬️ **Wind (land + zee)**|Productievoorspelling windenergie per uur|
+|☀️ **Zonne-energie**|Productievoorspelling zonenergie per uur|
+|⚡ **Totaal verbruik**|Nederlands elektriciteitsverbruik forecast|
+|💰 **EPEX prijzen AI forecast**|Day-ahead spotprijzen verwachting o.b.v. je eigen sensor (€/kWh)|
+|📈 **144u vooruit**|Tot 6 dagen forecast data in sensor attributes|
+|🔄 **Auto-refresh**|Elk uur automatisch geüpdatet|
+|🤖 **Auto-fit ML model**|Dagelijks om 02:07 model retraining op recente prijsdata|
+|📊 **Model metrics**|R² score sensor toont nauwkeurigheid van prijsvoorspelling|
+|⚡ **Snelle startup**|Model traint in background, geen blokkerende setup|
 
 ---
 
-## ⚡ Quick Start
+## ⚡ Quick start
 
-1. **Installeer via HACS** → Voeg custom repository toe
-2. **API Key ophalen** bij [NED.nl](https://ned.nl/nl/user/register)
-3. **Configureer integratie** via Settings → Integrations
-4. **Optioneel** Refereer je epex prijs sensor, zodat hij de forecast daarop kan baseren
-5. **Kopieer ApexCharts config** (zie hieronder)
+1. **Installeer via HACS** → Voeg custom repository toe ([zie installatie](#-installatie))
+2. **Haal API key op** bij [NED.nl](https://ned.nl/nl/user/register) (gratis)
+3. **Configureer integratie** via Settings → Integrations → Add Integration
+4. **Optioneel:** Koppel je EPEX prijs sensor voor slimme prijsvoorspelling
+5. **Kopieer** [**ApexCharts config**](#-apexcharts-dashboard) voor een mooie grafiek
 6. **Klaar!** 🎉
 
 ---
@@ -72,10 +71,12 @@ Home Assistant integratie voor real-time duurzame energievoorspellingen in Neder
 ### Via HACS (aanbevolen)
 
 1. Open **HACS** in Home Assistant
-2. Klik op de **3 stippen** rechts bovenin → **Custom repositories**
+2. Klik rechts bovenin op de **︙ (drie stippen)** → **Custom repositories**
 3. Voeg toe:
-   - **Repository**: `https://github.com/BravoNLD/NED-forecast`
-   - **Categorie**: `Integration`
+
+   * **Repository:** `https://github.com/BravoNLD/NED-forecast`
+   * **Category:** `Integration`
+
 4. Klik op **Add**
 5. Zoek naar **"NED Energy Forecast"** in HACS
 6. Klik op **Download**
@@ -83,9 +84,10 @@ Home Assistant integratie voor real-time duurzame energievoorspellingen in Neder
 
 ### Handmatige installatie
 
-1. Download de [nieuwste release](https://github.com/BravoNLD/NED-forecast/releases)
-2. Pak het uit in `custom_components/ned_energy_forecast/`
-3. Herstart Home Assistant
+1. Download de [laatste release](https://github.com/BravoNLD/NED-forecast/releases)
+2. Pak het archief uit
+3. Kopieer de map `custom\_components/ned\_energy\_forecast/` naar je HA config directory
+4. Herstart Home Assistant
 
 ---
 
@@ -93,64 +95,78 @@ Home Assistant integratie voor real-time duurzame energievoorspellingen in Neder
 
 ### Stap 1: Verkrijg een API key
 
-1. Ga naar **[NED.nl API Registratie](https://ned.nl/nl/user/register)**
-2. Maak een account aan (gratis voor non-commercieel gebruik)
-3. Log in en navigeer naar je profiel → **API Keys**
-4. Genereer een nieuwe API key
+1. Ga naar [**NED.nl API Registratie**](https://ned.nl/nl/user/register)
+2. Maak een gratis account aan (non-commercieel gebruik)
+3. Log in → Ga naar je **Profiel** → **API Keys**
+4. Klik op **Generate new API key**
 5. **Kopieer en bewaar deze veilig** – je ziet hem maar één keer!
 
-### Stap 2: Integratie toevoegen
+> \*\*Tip:\*\* Bewaar je API key in je password manager
 
-1. Ga naar **Settings** → **Devices & Services**
-2. Klik op **+ Add Integration**
+### Stap 2: Integratie toevoegen in Home Assistant
+
+1. Ga naar **Settings** → **Devices \& Services**
+2. Klik rechts onder op **+ Add Integration**
 3. Zoek naar **"NED Energy Forecast"**
-4. Plak je API key
-5. Optioneel: Voeg je EPEX prijs sensor toe
+4. Plak je **API key** in het eerste veld
+5. **Optioneel:** Selecteer je bestaande **EPEX prijs sensor** (bijv. van ENTSO-E, Nordpool, of Energy Zero)
+
+   * Als je dit invult, wordt een slimme prijsvoorspelling gemaakt op basis van duurzame energie overschot
+   * Als je dit leeg laat, worden alleen de duurzame energie sensoren aangemaakt
+
 6. Klik op **Submit**
 
-De sensoren worden nu automatisch aangemaakt en elk uur geüpdatet.
+De sensoren worden nu automatisch aangemaakt en direct ververst.
+
+### Stap 3: (Optioneel) Geavanceerde instellingen
+
+Klik op **Configure** bij de integratie in Settings → Integrations voor extra opties:
+
+|Optie|Default|Beschrijving|
+|-|-|-|
+|**Price sensor**|Geen|Je EPEX spotprijs sensor (€/kWh of ct/kWh)|
+|**Forecast hours**|48|Aantal uren vooruit (12-168 uur)|
 
 ---
 
-## 📊 Beschikbare sensoren
+## 📊 Sensoren \& attributen
 
-| Sensor | Entity ID | Eenheid | Beschrijving |
-|--------|-----------|---------|--------------|
-| Wind (land) | `sensor.ned_forecast_wind_onshore` | GW | Windproductie op land |
-| Wind (zee) | `sensor.ned_forecast_wind_offshore` | GW | Offshore windparken |
-| Zonne-energie | `sensor.ned_forecast_solar` | GW | Totale zonneproductie |
-| Totaal duurzaam | `sensor.ned_forecast_total_renewable` | GW | Som wind + zon |
-| Verbruik | `sensor.ned_forecast_consumption` | GW | Landelijk verbruik |
-| Dekkingspercentage | `sensor.ned_forecast_coverage` | % | Duurzame dekking |
-| EPEX prijs (prijs/kWh) | `sensor.ned_epex_price_kwh` | €/kWh | Prijs voorspelling |
-Alle sensoren bevatten **forecast attributes** met data tot 144 uur vooruit.
+### Beschikbare sensoren
 
----
+Alle sensoren hebben een **huidige waarde** (state) en **forecast attributen** met data tot 144 uur vooruit.
 
-## 📈 ApexCharts voorbeeld
+|Entity ID|Eenheid|Beschrijving|
+|-|-|-|
+|`sensor.ned\_forecast\_wind\_onshore`|GW|Windproductie op land|
+|`sensor.ned\_forecast\_wind\_offshore`|GW|Windproductie op zee (offshore windparken)|
+|`sensor.ned\_forecast\_solar`|GW|Totale zonneproductie Nederland|
+|`sensor.ned\_forecast\_total\_renewable`|GW|Som van wind + zon|
+|`sensor.ned\_forecast\_consumption`|GW|Landelijk elektriciteitsverbruik|
+|`sensor.forecast\_epex\_price`|€/kWh|EPEX spotprijs voorspelling (alleen als price sensor geconfigureerd)|
+|`sensor.model\_r2\_score`|-|R² score van het ML model|
 
-Kopieer deze configuratie voor een mooie gestapelde grafiek met prijzen:
+\*\* 📈 ApexCharts dashboard
+Kopieer deze configuratie voor een professionele gestapelde grafiek met prijzen:
 
-```yaml
+``` yaml
 type: custom:apexcharts-card
-graph_span: 144h
+graph\_span: 144h
 span:
   start: day
 header:
   show: true
-  title: Epex prijs en duurzame energie forecast
-  show_states: false
-  colorize_states: true
+  title: EPEX prijs en duurzame energie forecast
+  show\_states: false
+  colorize\_states: true
 now:
   show: true
   label: Nu
   color: "#FF6B6B"
-stacked: true
 yaxis:
   - id: Volume
     decimals: 0
-    align_to: 1
-    apex_config:
+    align\_to: 1
+    apex\_config:
       tickAmount: 6
       labels:
         formatter: |
@@ -159,21 +175,19 @@ yaxis:
           }
   - id: Price
     opposite: true
-    decimals: 0
+    decimals: 2
     min: ~0
-    max: ~0.25
-    apex_config:
+    max: ~0.30
+    apex\_config:
       tickAmount: 6
       labels:
         formatter: |
           EVAL:function(value) {
-            return value.toFixed(0) + ' €/kWh';
+            return '€' + value.toFixed(2);
           }
-apex_config:
+apex\_config:
   chart:
     height: 400px
-    stacked: true
-    stackType: normal
   grid:
     show: true
     borderColor: "#e0e0e0"
@@ -188,132 +202,147 @@ apex_config:
     intersect: false
     x:
       format: dd MMM yyyy HH:mm
-    "y":
-      formatter: |
-        EVAL:function(value) {
-          return value.toFixed(0) + ' GW';
-        }
   stroke:
     curve: smooth
     width: 2
-  fill:
-    type: solid
-    opacity: 0.85
   legend:
     show: true
     position: bottom
     horizontalAlign: center
 series:
-  - entity: sensor.ned_forecast_wind_onshore
+  - entity: sensor.ned\_forecast\_wind\_onshore
     name: Wind op land
-    type: column
-    yaxis_id: Volume
+    type: area
+    yaxis\_id: Volume
     color: "#0EA5E9"
-    unit: GW
-    stack_group: renewable
+    group\_by:
+      func: last
+      duration: 1h
     show:
-      legend_value: false
-    data_generator: |
+      legend\_value: false
+    data\_generator: |
       return entity.attributes.forecast.map((entry) => {
-        return [new Date(entry.datetime).getTime(), entry.value];
+        return \[new Date(entry.datetime).getTime(), entry.value];
       });
-  - entity: sensor.ned_forecast_wind_offshore
+  - entity: sensor.ned\_forecast\_wind\_offshore
     name: Wind op zee
-    type: column
+    type: area
     color: "#14B8A6"
-    yaxis_id: Volume
-    unit: GW
-    stack_group: renewable
+    yaxis\_id: Volume
+    group\_by:
+      func: last
+      duration: 1h
     show:
-      legend_value: false
-    data_generator: |
+      legend\_value: false
+    data\_generator: |
       return entity.attributes.forecast.map((entry) => {
-        return [new Date(entry.datetime).getTime(), entry.value];
+        return \[new Date(entry.datetime).getTime(), entry.value];
       });
-  - entity: sensor.ned_forecast_solar
+  - entity: sensor.ned\_forecast\_solar
     name: Zon
-    type: column
+    type: area
     color: "#FBBF24"
-    yaxis_id: Volume
-    unit: GW
-    stack_group: renewable
+    yaxis\_id: Volume
+    group\_by:
+      func: last
+      duration: 1h
     show:
-      legend_value: false
-    data_generator: |
+      legend\_value: false
+    data\_generator: |
       return entity.attributes.forecast.map((entry) => {
-        return [new Date(entry.datetime).getTime(), entry.value];
+        return \[new Date(entry.datetime).getTime(), entry.value];
       });
-  - entity: sensor.ned_forecast_consumption
+  - entity: sensor.ned\_forecast\_consumption
     name: Verbruik
     type: line
-    color: red
-    yaxis_id: Volume
-    unit: GW
+    color: "#EF4444"
+    yaxis\_id: Volume
+    stroke\_width: 3
+    group\_by:
+      func: last
+      duration: 1h
     show:
-      legend_value: false
-    data_generator: |
+      legend\_value: false
+    data\_generator: |
       return entity.attributes.forecast.map((entry) => {
-        return [new Date(entry.datetime).getTime(), entry.value];
+        return \[new Date(entry.datetime).getTime(), entry.value];
       });
-  - entity: sensor.forecast_epex_price
-    name: EPEX Prijs
+  - entity: sensor.forecast\_epex\_price
+    name: EPEX prijs
     type: line
-    color: white
-    yaxis_id: Price
-    unit: €/kWh
-    stroke_width: 3
-    opacity: 1
+    color: "#8B5CF6"
+    yaxis\_id: Price
+    stroke\_width: 3
+    group\_by:
+      func: last
+      duration: 1h
     show:
-      legend_value: false
-    data_generator: |
+      legend\_value: false
+    data\_generator: |
       return entity.attributes.forecast.map((entry) => {
-        return [new Date(entry.datetime).getTime(), entry.value];
+        return \[new Date(entry.datetime).getTime(), entry.value];
       });
 ```
-## 💡 Tip: Full-width weergave
 
-Wrap de card in een grid voor maximale breedte:
-```yaml
-type: grid
-columns: 1
-cards:
-  - type: custom:apexcharts-card
-    # ... jouw config hierboven
-```
-## ❓ Veelgestelde vragen
+Vereiste: Installeer eerst ApexCharts Card via HACS
 
-**Q: Sensoren tonen "Unavailable"**  
-A: Check of je API key geldig is. Kijk in de logs (`Settings → System → Logs`) voor foutmeldingen.
+---
 
-**Q: Forecast data is verouderd**  
-A: De data wordt elk uur ververst. Force een update via Developer Tools → Services → `homeassistant.update_entity`.
+## 🔧 Troubleshooting
 
-**Q: ApexCharts grafiek is leeg**
-A:  Controleer of custom:apexcharts-card is geïnstalleerd via HACS
-    Wacht ~1 uur tot forecast data is opgehaald
-    Check of entity ID's kloppen met jouw installatie
+Sensoren tonen "Unavailable"
+Mogelijke oorzaken:
 
-**Q: Mijn prijzen zijn 100x te hoog/laag
-A: Check je automations en template sensors en verwijder conversies van €/kWh naar ct/kWh
+API key ongeldig - Check in Settings → Integrations → NED Energy Forecast → Configure
+NED.nl API down - Check ned.nl status
+Netwerk issues - Check HA logs: Settings → System → Logs → Filter op "ned\_energy"
 
-## 🚀 Roadmap
+---
 
-- [ ] Notificaties bij lage/hoge dekkingspercentages  
-- [x] EPEX prijsvoorspelling *(sinds v1.1.0)*
+## 🤝 Contributing
 
-Suggesties? Open een [issue](https://github.com/BravoNLD/NED-forecast/issues)!
+Bijdragen zijn welkom!
 
-## 📜 Credits
+Issues \& bugs
+Check of het issue al bestaat
+Open een nieuwe issue met:
+HA versie
+Integratie versie
+Logs (Settings → System → Logs → filter "ned\_energy")
+Screenshot indien relevant
+Pull requests
+Fork de repository
+Maak een feature branch: git checkout -b feature/amazing-feature
+Commit je changes: git commit -m 'feat: add amazing feature'
+Push naar de branch: git push origin feature/amazing-feature
+Open een Pull Request
 
-    Data-bron: NED.nl 
-[![Datasource](https://ned.nl/themes/custom/nedt/logo.svg)](https://ned.nl/nl)
-    
-    Ontwikkeld door: @BravoNLD
-
-Dank aan de Tweakers.net community voor feedback en testing!
-
-## Licentie
+## 📜 License
 
 Dit project is gelicenseerd onder de MIT License – zie het LICENSE bestand voor details.
 
-Gemaakt met ⚡ voor de Nederlandse energietransitie 
+## 🙏 Credits
+
+Data bron
+Alle energie forecast data is afkomstig van NED (Nationale Energiedata), een initiatief voor open energiedata in Nederland.
+
+Ontwikkeling
+Maintainer: @BravoNLD
+Contributors: See all contributors
+Community
+Dank aan:
+
+De Tweakers.net community voor vroege testing
+Alle GitHub contributors en issue reporters
+
+## ⭐ Support dit project
+
+Vind je deze integratie nuttig?
+
+⭐ Star deze repository op GitHub
+🐛 Meld bugs via issues
+💬 Deel je dashboard in de discussions
+Gemaakt met ⚡ voor de Nederlandse energietransitie
+
+Documentatie • Issues • Discussions • Releases
+
