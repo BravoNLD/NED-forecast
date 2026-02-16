@@ -1,6 +1,7 @@
 """Data update coordinator for NED Energy Forecast."""
 
 import logging
+import asyncio
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -60,6 +61,9 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
         # Cancel handles voor scheduled tasks
         self._cancel_hourly_update = None
         self._cancel_daily_refit = None
+
+        # Background task tracking for model fitting
+        self._fit_task: asyncio.Task | None = None
 
         super().__init__(
             hass,
@@ -187,7 +191,18 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
             
             # Fit model dagelijks om 02:07 (of bij eerste run)
             if self.lr_model is None or self._should_refit():
-                await self._fit_lr_model()
+                # Probeer fit te starten. Als er al een fit loopt, gebruik fallback.
+                started = self._ensure_fit_scheduled(reason="forecast_request")
+                if started:
+                    _LOGGER.debug("Model fit scheduled (reason=forecast_request)")
+
+            # Als model nog niet beschikbaar is, val terug op fallback
+            if self.lr_model is None:
+                _LOGGER.warning(
+                    "LR model (nog) niet beschikbaar tijdens opstarten, gebruik fallback formule"
+                )
+                self._calculate_epex_fallback(data)
+                return
             
             # Als model nog steeds None is, gebruik fallback formule
             if self.lr_model is None:
@@ -730,6 +745,53 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
             REFIT_TIME
         )
                 
+    def _ensure_fit_scheduled(self, reason: str) -> bool:
+        """Plan een model-fit in de achtergrond als dat nodig is.
+        
+        Deze methode voorkomt dubbele fits door te checken of er al een 
+        actieve task loopt. Safe voor gebruik vanuit meerdere callbacks.
+        
+        Args:
+            reason: Reden voor de fit (bijv. "startup", "daily_refit", "forecast_request")
+        
+        Returns:
+            True als er een nieuwe fit-task is gestart, anders False.
+        """
+        if not self.price_sensor:
+            return False
+        
+        # Check of er al een actieve task is (single-flight pattern)
+        if self._fit_task is not None and not self._fit_task.done():
+            _LOGGER.debug("Model fit already in progress, skipping (reason=%s)", reason)
+            return False
+        
+        async def _runner() -> None:
+            """Runner functie die de fit uitvoert met proper error handling."""
+            try:
+                _LOGGER.info(
+                    "Start Linear Regression model fit (background), reason=%s",
+                    reason,
+                )
+                await self._fit_lr_model()
+                _LOGGER.info("Model fit completed successfully (reason=%s)", reason)
+            except asyncio.CancelledError:
+                # Task werd gecancel'd tijdens shutdown/reload - dit is normaal
+                _LOGGER.debug("Model fit cancelled (reason=%s)", reason)
+                raise  # Re-raise om cancellation te propageren
+            except Exception:
+                # Onverwachte error - log en reset model voor refit
+                _LOGGER.exception("Background model fit failed (reason=%s)", reason)
+                # Reset model state om refit te forceren bij volgende poging
+                self.lr_model = None
+                self.last_fit_time = None
+        
+        # Start de task via HA's task manager (proper lifecycle handling)
+        self._fit_task = self.hass.async_create_task(
+            _runner(),
+            name=f"{DOMAIN}_lr_fit_{reason}",
+        )
+        return True
+
                 
     async def async_shutdown(self) -> None:
         """Cleanup bij shutdown - remove time tracking listeners."""
@@ -741,6 +803,15 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
         if self._cancel_daily_refit:
             self._cancel_daily_refit()
             _LOGGER.debug("Daily refit listener verwijderd")
+        
+        # Cancel en wacht op eventuele lopende fit task
+        if self._fit_task is not None and not self._fit_task.done():
+            self._fit_task.cancel()
+            try:
+                await self._fit_task
+            except asyncio.CancelledError:
+                pass  # Expected bij cancel
+            _LOGGER.debug("Cancelled background model fit task during shutdown")
 
     def start_background_schedulers(self) -> None:
         """Start background schedulers AFTER first refresh is complete."""
@@ -752,8 +823,9 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
         """First refresh na setup - start schedulers."""
         await super().async_config_entry_first_refresh()
         
-        # ✅ Alleen refit als price sensor is ingesteld
+        # ✅ Start model fit in background (non-blocking)
         if self.price_sensor:
-            await self._fit_lr_model()
+            self._ensure_fit_scheduled(reason="startup")
+            _LOGGER.info("Model fit scheduled in background during startup")
         else:
             _LOGGER.info("Price sensor niet ingesteld, model fit overgeslagen bij startup")
