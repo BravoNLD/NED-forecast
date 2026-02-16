@@ -81,7 +81,7 @@ SENSOR_TYPES = {
     "forecast_epex_price": {
         "name": "Forecast Epex Price",
         "icon": "mdi:cash-multiple",
-        "unit": "ct/kWh",
+        "unit": "€/kWh",
         "calculated": True,
     },
     # ✅ NIEUW: R² Score sensor

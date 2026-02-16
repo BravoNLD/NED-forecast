@@ -2,16 +2,17 @@
 
 import logging
 from datetime import datetime, timedelta
-import asyncio
 from typing import Any
 
 import aiohttp
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import aiohttp_client
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.components.recorder import get_instance, history
 from homeassistant.util import dt as dt_util
+from homeassistant.helpers.event import async_track_time_change
 
 from .const import (
     DOMAIN,
@@ -245,8 +246,8 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                     price_predictions = self.lr_model.predict(X)
                     price_prediction = price_predictions[0]
                     
-                    # Begrens tussen -5 en 50 ct/kWh (realistisch bereik)
-                    price_prediction = max(-5.0, min(50.0, price_prediction))
+                    # Begrens tussen -0.10 en 0.80 €/kWh (realistisch bereik)
+                    price_prediction = max(-0.10, min(0.80, price_prediction))
                     
                     epex_forecast.append({
                         "capacity": round(price_prediction, 3),
@@ -258,7 +259,7 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
             if epex_forecast:
                 data["forecast_epex_price"] = epex_forecast
                 _LOGGER.info(
-                    "EPEX LR forecast: %d datapunten, huidige prijs: %.3f ct/kWh (model age: %s)",
+                    "EPEX LR forecast: %d datapunten, huidige prijs: %.4f €/kWh (model age: %s)",
                     len(epex_forecast),
                     epex_forecast[0]["capacity"],
                     (datetime.now() - self.last_fit_time) if self.last_fit_time else "nooit"
@@ -309,7 +310,7 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                     total_renewable = values["wind_onshore"] + values["wind_offshore"] + solar_on_grid
                     restlast_gw = values["consumption"] - total_renewable
                     
-                    epex_price = (1.08 * restlast_gw) + 0.45
+                    epex_price = (0.0108 * restlast_gw) + 0.0045
 
                     epex_forecast.append({
                         "capacity": round(epex_price, 3),
@@ -429,6 +430,24 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                 len(price_hourly),
             )
         
+            # ✅ NIEUW: Auto-detect en converteer naar €/kWh
+            price_sensor_state = self.hass.states.get(self.price_sensor)
+            if price_sensor_state:
+                sensor_unit = price_sensor_state.attributes.get("unit_of_measurement", "ct/kWh")
+    
+                # Normaliseer unit strings
+                is_euro = sensor_unit.lower() in ["€/kwh", "eur/kwh", "euro/kwh"]
+                is_cent = sensor_unit.lower() in ["ct/kwh", "c/kwh", "eurocent/kwh", "cent/kwh"]
+    
+                if is_cent:
+                    # Converteer alle waarden van ct → €
+                    price_hourly = {hour: val / 100.0 for hour, val in price_hourly.items()}
+                    _LOGGER.info(f"Converted {len(price_hourly)} price records from ct/kWh to €/kWh")
+                elif not is_euro:
+                    _LOGGER.warning(f"Unknown price unit '{sensor_unit}', assuming ct/kWh")
+                    price_hourly = {hour: val / 100.0 for hour, val in price_hourly.items()}
+
+
             # ========== MATCHING + SOLAR=0 IMPUTATION ==========
             X_list = []
             y_list = []
@@ -605,51 +624,53 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
         }
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    url, headers=headers, params=params, timeout=30
-                ) as response:
-                    if response.status == 401:
-                        raise UpdateFailed("Invalid API key")
-                    if response.status == 403:
-                        raise UpdateFailed("API access forbidden - check your API key")
+            # ✅ Gebruik HA centrale sessie voor connection pooling/timeouts
+            session = aiohttp_client.async_get_clientsession(self.hass)
+        
+            async with session.get(
+                url, headers=headers, params=params, timeout=30
+            ) as response:
+                if response.status == 401:
+                    raise UpdateFailed("Invalid API key")
+                if response.status == 403:
+                    raise UpdateFailed("API access forbidden - check your API key")
 
-                    if response.status != 200:
-                        error_text = await response.text()
-                        _LOGGER.error(
-                            "NED API returned status %s for type %s: %s",
-                            response.status,
-                            type_id,
-                            error_text,
-                        )
-                        return []
+                if response.status != 200:
+                    error_text = await response.text()
+                    _LOGGER.error(
+                        "NED API returned status %s for type %s: %s",
+                        response.status,
+                        type_id,
+                        error_text,
+                    )
+                    return []
 
-                    data = await response.json()
-                    records = data.get("hydra:member", [])
+                data = await response.json()
+                records = data.get("hydra:member", [])
 
-                    if not records:
-                        _LOGGER.warning("No data returned for type %s", type_id)
-                        return []
+                if not records:
+                    _LOGGER.warning("No data returned for type %s", type_id)
+                    return []
 
-                    parsed: list[dict] = []
-                    for record in records:
-                        # ⚡ API geeft capacity in Watt, we willen GW
-                        capacity_watt = float(record.get("capacity", 0))
-                        capacity_gw = capacity_watt / 1000000.0
+                parsed: list[dict] = []
+                for record in records:
+                    # ⚡ API geeft capacity in Watt, we willen GW
+                    capacity_watt = float(record.get("capacity", 0))
+                    capacity_gw = capacity_watt / 1000000.0
 
-                        parsed.append(
-                            {
-                                "capacity": capacity_gw,  # Converted to GW
-                                "timestamp": record.get("validfrom"),
-                                "percentage": record.get("percentage"),
-                                "last_update": record.get("lastupdate"),
-                            }
-                        )
+                    parsed.append(
+                        {
+                            "capacity": capacity_gw,  # Converted to GW
+                            "timestamp": record.get("validfrom"),
+                            "percentage": record.get("percentage"),
+                            "last_update": record.get("lastupdate"),
+                        }
+                    )
 
-                    # Sort by timestamp (oudste eerst = chronologisch)
-                    parsed.sort(key=lambda x: x["timestamp"] or "")
+                # Sort by timestamp (oudste eerst = chronologisch)
+                parsed.sort(key=lambda x: x["timestamp"] or "")
 
-                    return parsed
+                return parsed
 
         except aiohttp.ClientError as err:
             _LOGGER.error("Connection error fetching data for type %s: %s", type_id, err)
@@ -660,67 +681,76 @@ class NEDEnergyDataUpdateCoordinator(DataUpdateCoordinator[dict]):
 
     @callback
     def _schedule_hourly_update(self) -> None:
-        """Schedule update op hele uren (xx:00)."""
-        async def _update_at_hour():
-            while True:
-                now = datetime.now()
-                # Bereken tijd tot volgende hele uur
-                next_hour = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
-                wait_seconds = (next_hour - now).total_seconds()
-                
-                _LOGGER.debug(f"Volgende hourly update over {wait_seconds:.0f} seconden ({next_hour})")
-                await asyncio.sleep(wait_seconds)
-                
-                # Trigger update
-                await self.async_refresh()
+        """Schedule update op hele uren (xx:00) via HA time tracker."""
         
-        # Start task
-        self._cancel_hourly_update = self.hass.async_create_task(_update_at_hour())
+        async def _handle_hourly_update(now: datetime) -> None:
+            """Callback voor elk heel uur."""  
+            _LOGGER.debug("Hourly update geactiveerd op %s", now)
+            await self.async_refresh()
+        
+        # Track elk heel uur (minute=0, second=0)
+        self._cancel_hourly_update = async_track_time_change(
+            self.hass,
+            _handle_hourly_update,
+            minute=0,
+            second=0
+        )
+
+        _LOGGER.info("Hourly updates gescheduled op elk heel uur (:00)")
 
     @callback
     def _schedule_daily_refit(self) -> None:
-        """Schedule dagelijkse refit om 02:07."""
-        async def _refit_at_time():
-            while True:
-                now = datetime.now()
-                
-                # Bereken tijd tot volgende 02:07
-                refit_hour, refit_minute = map(int, REFIT_TIME.split(":"))
-                next_refit = now.replace(hour=refit_hour, minute=refit_minute, second=0, microsecond=0)
-                
-                # Als 02:07 vandaag al geweest is, plan voor morgen
-                if next_refit <= now:
-                    next_refit += timedelta(days=1)
-                
-                wait_seconds = (next_refit - now).total_seconds()
-                
-                _LOGGER.info(f"Volgende model refit gepland over {wait_seconds / 3600:.1f} uur ({next_refit})")
-                await asyncio.sleep(wait_seconds)
-                
-                # Force refit
-                _LOGGER.info("Start scheduled model refit...")
-                await self._fit_lr_model()
-                
-                # Trigger update om nieuwe prijzen te berekenen
-                await self.async_refresh()
-        
-        # Start task
-        self._cancel_daily_refit = self.hass.async_create_task(_refit_at_time())
+        """Schedule dagelijks refit om 02:07 via HA time tracker."""
 
+        async def _handle_daily_refit(now: datetime) -> None:
+            """Callback voor dagelijkse model refit."""
+            _LOGGER.info("Daily model refit geactiveerd op %s", now)
+
+            await self._fit_lr_model()
+
+            # Trigger update om nieuwe forecast te genereren met nieuw model
+            await self.async_refresh()
+
+        # Parse REFIT_TIME uit const.py (bijv "02:07")
+        refit_hour, refit_minute = map(int, REFIT_TIME.split(":"))
+
+        # Track dagelijks op 02:07 (hour=2, minute=7)
+        self._cancel_daily_refit = async_track_time_change(
+            self.hass,
+            _handle_daily_refit,
+            hour=refit_hour,
+            minute=refit_minute,
+            second=0
+        )
+
+        _LOGGER.info(
+            "Daily model refit gescheduled op %02d:%02d (tijd uit config: %s)",
+            refit_hour,
+            refit_minute,
+            REFIT_TIME
+        )
+                
+                
     async def async_shutdown(self) -> None:
-        """Cleanup bij shutdown."""
+        """Cleanup bij shutdown - remove time tracking listeners."""
+        # Cancel handles zijn nu callables (CALLBACK_TYPE)
         if self._cancel_hourly_update:
-            self._cancel_hourly_update.cancel()
+            self._cancel_hourly_update()
+            _LOGGER.debug("Hourly update listener verwijderd")
+
         if self._cancel_daily_refit:
-            self._cancel_daily_refit.cancel()
+            self._cancel_daily_refit()
+            _LOGGER.debug("Daily refit listener verwijderd")
+
+    def start_background_schedulers(self) -> None:
+        """Start background schedulers AFTER first refresh is complete."""
+        _LOGGER.info("Starting background schedulers...")
+        self._schedule_hourly_update()
+        self._schedule_daily_refit()
 
     async def async_config_entry_first_refresh(self) -> None:
         """First refresh na setup - start schedulers."""
         await super().async_config_entry_first_refresh()
-        
-        # Start schedulers
-        self._schedule_hourly_update()
-        self._schedule_daily_refit()
         
         # ✅ Alleen refit als price sensor is ingesteld
         if self.price_sensor:
