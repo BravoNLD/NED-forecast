@@ -348,6 +348,8 @@ Vind je deze integratie nuttig?
 
 💬 Deel je dashboard in de discussions
 
+🇳🇱 Haal ook je energie bij [Zonneplan](https://start.zonneplan.nl/energie?promotion_code=483ebbfa-75ef-4ee1-990f-67e08567c1ca&utm_source=referral&utm_medium=app&utm_campaign=deel-en-verdien&c=113735) !
+
 Gemaakt met ⚡ voor de Nederlandse energietransitie
 
 Documentatie • Issues • Discussions • Releases
