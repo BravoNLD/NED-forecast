@@ -16,7 +16,7 @@ Deze integratie haalt real-time productievoorspellingen op voor wind- en zonne-e
 
 ### ⚡ Supersnel opstarten (85-95% sneller)
 
-Het machine learning model traint nu **in de achtergrond** tijdens Home Assistant startup. Voorheen moest HA wachten tot het model klaar was (15-40 seconden), nu zijn je sensors binnen 1-3 seconden beschikbaar.
+Het machine learning model traint nu **in de achtergrond** tijdens Home Assistant startup. Voorheen moest HA wachten tot het model klaar was (ca 40 seconden), nu zijn je sensors binnen 1-3 seconden beschikbaar.
 
 **Wat betekent dit voor jou:**
 
