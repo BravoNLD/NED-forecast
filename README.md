@@ -25,7 +25,7 @@ Het machine learning model traint nu **in de achtergrond** tijdens Home Assistan
 * ⏱️ **Tijdelijk eenvoudigere forecast** - De eerste ~30-60 minuten gebruikt een fallback-formule
 * 🔄 **Automatische switch** - Zodra het ML-model klaar is, schakelt de forecast automatisch over
 
-> \*\*Let op:\*\* Direct na restart kan `forecast_epex_price` kort gebaseerd zijn op een eenvoudigere berekening. Dit is normaal en lost zichzelf op binnen ~30 seconden.
+> \*\*Let op:\*\* Direct na restart kan `forecast_epex_price` kort gebaseerd zijn op een eenvoudigere berekening. Dit is normaal en lost zichzelf op binnen 30-60 minuten.
 
 **Technisch:** Model fitting gebeurt nu via `hass.async_create_task` met proper concurrency guards en cleanup bij reload/shutdown. Geen breaking changes in configuratie.
 
