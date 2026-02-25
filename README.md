@@ -22,7 +22,7 @@ Het machine learning model traint nu **in de achtergrond** tijdens Home Assistan
 
 * ✅ **Snellere HA restart** - Setup completeert direct
 * ✅ **Direct beschikbare sensors** - Geen wachttijd meer
-* ⏱️ **Tijdelijk eenvoudigere forecast** - De eerste ~10-30 seconden gebruikt een fallback-formule
+* ⏱️ **Tijdelijk eenvoudigere forecast** - De eerste ~30-60 minuten gebruikt een fallback-formule
 * 🔄 **Automatische switch** - Zodra het ML-model klaar is, schakelt de forecast automatisch over
 
 > \*\*Let op:\*\* Direct na restart kan `forecast_epex_price` kort gebaseerd zijn op een eenvoudigere berekening. Dit is normaal en lost zichzelf op binnen ~30 seconden.
