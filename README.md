@@ -272,6 +272,7 @@ series:
     color: "#8B5CF6"
     yaxis_id: Price
     stroke_width: 3
+    float_precision: 3
     group_by:
       func: last
       duration: 1h
@@ -293,7 +294,9 @@ Sensoren tonen "Unavailable"
 Mogelijke oorzaken:
 
 API key ongeldig - Check in Settings → Integrations → NED Energy Forecast → Configure
+
 NED.nl API down - Check ned.nl status
+
 Netwerk issues - Check HA logs: Settings → System → Logs → Filter op "ned\_energy"
 
 ---
